@@ -10,6 +10,7 @@ import AnonymousMessage from "./pages/AnonymousMessage";
 import EWhatsAppSim from "./pages/EWhatsAppSim";
 import OTPService from "./pages/OTPService";
 import MarketingLeads from "./pages/MarketingLeads";
+import BulkSurveys from "./pages/BulkSurveys";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/e-whatsapp-sim" element={<EWhatsAppSim />} />
           <Route path="/otp-service" element={<OTPService />} />
           <Route path="/marketing-leads" element={<MarketingLeads />} />
+          <Route path="/bulk-surveys" element={<BulkSurveys />} />
           {/* Add routes for other pages */}
           <Route path="*" element={<NotFound />} />
         </Routes>
