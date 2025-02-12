@@ -11,6 +11,7 @@ import EWhatsAppSim from "./pages/EWhatsAppSim";
 import OTPService from "./pages/OTPService";
 import MarketingLeads from "./pages/MarketingLeads";
 import BulkSurveys from "./pages/BulkSurveys";
+import APIIntegration from "./pages/APIIntegration";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/otp-service" element={<OTPService />} />
           <Route path="/marketing-leads" element={<MarketingLeads />} />
           <Route path="/bulk-surveys" element={<BulkSurveys />} />
+          <Route path="/api-integration" element={<APIIntegration />} />
           {/* Add routes for other pages */}
           <Route path="*" element={<NotFound />} />
         </Routes>
