@@ -41,6 +41,10 @@ const menuItems = [
     title: "WhatsApp Trading Bot",
     path: "/trading-bot",
   },
+  {
+    title: "WhatsApp Alerts Service",
+    path: "/alerts-service",
+  },
 ];
 
 export function SideDrawer() {

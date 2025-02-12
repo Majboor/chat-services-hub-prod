@@ -13,6 +13,7 @@ import MarketingLeads from "./pages/MarketingLeads";
 import BulkSurveys from "./pages/BulkSurveys";
 import APIIntegration from "./pages/APIIntegration";
 import TradingBot from "./pages/TradingBot";
+import AlertsService from "./pages/AlertsService";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/bulk-surveys" element={<BulkSurveys />} />
           <Route path="/api-integration" element={<APIIntegration />} />
           <Route path="/trading-bot" element={<TradingBot />} />
+          <Route path="/alerts-service" element={<AlertsService />} />
           {/* Add routes for other pages */}
           <Route path="*" element={<NotFound />} />
         </Routes>
