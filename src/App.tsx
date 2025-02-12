@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AnonymousMessage from "./pages/AnonymousMessage";
+import EWhatsAppSim from "./pages/EWhatsAppSim";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/anonymous-message" element={<AnonymousMessage />} />
+          <Route path="/e-whatsapp-sim" element={<EWhatsAppSim />} />
           {/* Add routes for other pages */}
           <Route path="*" element={<NotFound />} />
         </Routes>
