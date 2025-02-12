@@ -69,7 +69,11 @@ export default function AnonymousMessage() {
                 <MessageSquare className="mr-2 h-5 w-5" />
                 Try It Now
               </Button>
-              <Button size="lg" variant="outline" className="text-white border-white/20 hover:bg-white/10">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="text-white bg-white/5 border-white/40 hover:bg-white/20 hover:border-white/60 transition-all duration-200"
+              >
                 Learn More
               </Button>
             </div>
