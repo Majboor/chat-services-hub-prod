@@ -12,6 +12,7 @@ import OTPService from "./pages/OTPService";
 import MarketingLeads from "./pages/MarketingLeads";
 import BulkSurveys from "./pages/BulkSurveys";
 import APIIntegration from "./pages/APIIntegration";
+import TradingBot from "./pages/TradingBot";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/marketing-leads" element={<MarketingLeads />} />
           <Route path="/bulk-surveys" element={<BulkSurveys />} />
           <Route path="/api-integration" element={<APIIntegration />} />
+          <Route path="/trading-bot" element={<TradingBot />} />
           {/* Add routes for other pages */}
           <Route path="*" element={<NotFound />} />
         </Routes>
