@@ -14,7 +14,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Smartphone, Sim, CheckCircle, ArrowRight } from "lucide-react";
+import { Smartphone, CreditCard, CheckCircle, ArrowRight } from "lucide-react";
 
 export default function EWhatsAppSim() {
   return (
@@ -38,7 +38,7 @@ export default function EWhatsAppSim() {
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="bg-whatsapp-light hover:bg-whatsapp-dark text-white">
-                <Sim className="mr-2 h-5 w-5" />
+                <CreditCard className="mr-2 h-5 w-5" />
                 Activate Your SIM
               </Button>
               <Button size="lg" variant="outline">
@@ -101,7 +101,7 @@ export default function EWhatsAppSim() {
             {
               title: "Choose Package",
               description: "Select your preferred e-SIM package",
-              icon: <Sim className="h-6 w-6" />,
+              icon: <CreditCard className="h-6 w-6" />,
             },
             {
               title: "Receive Details",
