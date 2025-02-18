@@ -286,31 +286,25 @@ const FlowSection = () => {
       } catch (e) {
         data = { error: 'Invalid response format' };
       }
+
+      if (response.status === 404 && endpoint.includes('/campaign/status/')) {
+        console.log('Campaign status not found - treating as new campaign');
+        return { details: [] };
+      }
       
       if (!response.ok) {
-        if (response.status === 404 && endpoint.includes('/campaign/status/')) {
-          console.log('No campaign status found, treating as new campaign');
-          return { details: [] };
-        }
-        
-        if (endpoint === '/auth/register') {
-          console.log('Registration failed:', data);
-          if (data.error?.includes('already exists')) {
-            return { username: payload.username };
-          }
-        }
-        
         throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
       }
       
       return data;
     } catch (error) {
+      console.error("API Error:", error);
+      
       if (endpoint.includes('/campaign/status/')) {
-        console.log('Error fetching campaign status, treating as new campaign');
+        console.log('Error fetching campaign status - treating as new campaign');
         return { details: [] };
       }
       
-      console.error("API Error:", error);
       const errorMessage = (error as Error).message;
       setError(errorMessage);
       toast({
@@ -330,13 +324,7 @@ const FlowSection = () => {
         'GET'
       );
       
-      let statusResponse;
-      try {
-        statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
-      } catch (error) {
-        console.log('Failed to fetch campaign status, assuming new campaign');
-        statusResponse = { details: [] };
-      }
+      const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
       
       const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => formatNumber(d.number)));
       const availableNumbers = numbersResponse.filter((n: NumberStatus) => 
@@ -346,7 +334,7 @@ const FlowSection = () => {
       setNumbers(availableNumbers);
       setSelectedCampaign(campaign);
       setError(null);
-      
+
       if (availableNumbers.length === 0) {
         toast({
           title: "Info",
