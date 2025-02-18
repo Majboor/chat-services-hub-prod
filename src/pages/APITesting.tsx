@@ -1,18 +1,9 @@
+
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
@@ -36,6 +27,16 @@ const demoData = {
     username: "demo_user",
     password: "demo123"
   },
+  credits: {
+    add: {
+      username: "demo_user",
+      amount: 100.50
+    },
+    remove: {
+      username: "demo_user",
+      amount: 25.75
+    }
+  },
   createList: {
     list_name: "demo_list",
     username: "demo_user"
@@ -45,28 +46,21 @@ const demoData = {
     username: "demo_user",
     number: "+1234567890",
     name: "John Doe",
-    interests: "Technology, Marketing",
+    interests: "Technology",
     age: "25-34",
     location: "New York",
     gender: "Male",
     language: "English",
     occupation: "Marketing Manager",
     preferred_contact_time: "Morning",
-    tags: "VIP, Tech-savvy",
+    tags: "VIP",
     additional_details: {
       social_media: {
         facebook: "johndoe",
-        twitter: "@johndoe",
-        linkedin: "john-doe"
-      },
-      communication_preferences: {
-        preferred_platform: "WhatsApp",
-        do_not_disturb: "22:00-06:00",
-        frequency: "Weekly"
+        twitter: "@johndoe"
       },
       custom_fields: {
-        company: "Tech Corp",
-        department: "Marketing"
+        company: "Tech Corp"
       }
     }
   }
@@ -219,7 +213,7 @@ const makeRequest = async (endpoint: string, method: string, payload?: any): Pro
 
   try {
     const response = await fetch(url, options);
-    const data = await response.json(); // Direct JSON parsing since we know the response is valid JSON
+    const data = await response.json();
     return {
       status: response.status,
       data
@@ -247,8 +241,9 @@ export default function APITesting() {
         <h1 className="text-3xl font-bold mb-8">API Testing Dashboard</h1>
         
         <Tabs defaultValue="auth">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="auth">Authentication</TabsTrigger>
+            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="contacts">Contact Management</TabsTrigger>
             <TabsTrigger value="campaigns">Campaign Management</TabsTrigger>
             <TabsTrigger value="execution">Campaign Execution</TabsTrigger>
@@ -269,22 +264,28 @@ export default function APITesting() {
               demoPayload={demoData.login}
               onTest={(payload) => makeRequest("/auth/login", "POST", payload)}
             />
+          </TabsContent>
+
+          <TabsContent value="credits" className="mt-6">
             <EndpointCard
-              title="Change Password"
-              endpoint="/auth/change-password"
-              method="PUT"
-              demoPayload={{
-                username: "demo_user",
-                old_password: "demo123",
-                new_password: "newdemo123"
-              }}
-              onTest={(payload) => makeRequest("/auth/change-password", "PUT", payload)}
+              title="Add Credits"
+              endpoint="/credits/add"
+              method="POST"
+              demoPayload={demoData.credits.add}
+              onTest={(payload) => makeRequest("/credits/add", "POST", payload)}
             />
             <EndpointCard
-              title="List Users"
-              endpoint="/auth/users"
+              title="Remove Credits"
+              endpoint="/credits/remove"
+              method="POST"
+              demoPayload={demoData.credits.remove}
+              onTest={(payload) => makeRequest("/credits/remove", "POST", payload)}
+            />
+            <EndpointCard
+              title="Check Credits"
+              endpoint="/credits/check/{username}"
               method="GET"
-              onTest={() => makeRequest("/auth/users", "GET")}
+              onTest={(payload) => makeRequest(`/credits/check/${payload?.username || 'demo_user'}`, "GET")}
             />
           </TabsContent>
 
@@ -298,9 +299,10 @@ export default function APITesting() {
             />
             <EndpointCard
               title="List Numbers"
-              endpoint="/numbers/check"
+              endpoint="/numbers/list"
               method="GET"
-              onTest={() => makeRequest("/numbers/check", "GET")}
+              demoPayload={{ list_name: "demo_list", username: "demo_user" }}
+              onTest={(payload) => makeRequest(`/numbers/list?list_name=${payload.list_name}&username=${payload.username}`, "GET")}
             />
             <EndpointCard
               title="Add Contact"
@@ -337,30 +339,33 @@ export default function APITesting() {
               method="GET"
               onTest={() => makeRequest("/campaign/list", "GET")}
             />
+            <EndpointCard
+              title="Get Campaign Details"
+              endpoint="/campaign/{name}"
+              method="GET"
+              demoPayload={{ name: "Demo Campaign" }}
+              onTest={(payload) => makeRequest(`/campaign/${payload.name}`, "GET")}
+            />
           </TabsContent>
 
           <TabsContent value="execution" className="mt-6">
             <EndpointCard
-              title="Start Campaign"
+              title="Start Campaign Execution"
               endpoint="/campaign/execute/{campaign_name}"
               method="POST"
-              demoPayload={{
-                campaign_name: "demo_campaign"
+              demoPayload={{ 
+                campaign_name: "Demo Campaign",
+                batch_size: 10,
+                offset: 0
               }}
-              onTest={(payload) => makeRequest(`/campaign/execute/${payload.campaign_name}`, "POST")}
+              onTest={(payload) => {
+                const { campaign_name, ...body } = payload;
+                return makeRequest(`/campaign/execute/${campaign_name}`, "POST", body);
+              }}
             />
             <EndpointCard
-              title="Get Campaign Status"
-              endpoint="/campaign/status/{campaign_name}"
-              method="GET"
-              demoPayload={{
-                campaign_name: "demo_campaign"
-              }}
-              onTest={(payload) => makeRequest(`/campaign/status/${payload.campaign_name}`, "GET")}
-            />
-            <EndpointCard
-              title="Update Message Status"
-              endpoint="/campaign/update-status"
+              title="Update Number Status"
+              endpoint="/campaign/number-status"
               method="POST"
               demoPayload={{
                 campaign_id: "demo_1",
@@ -370,14 +375,27 @@ export default function APITesting() {
                 error_message: "",
                 additional_data: {
                   delivery_time: new Date().toISOString(),
-                  message_id: "msg_123",
-                  user_interaction: {
-                    clicked: true,
-                    click_time: new Date().toISOString()
-                  }
+                  custom_field: "value"
                 }
               }}
-              onTest={(payload) => makeRequest("/campaign/update-status", "POST", payload)}
+              onTest={(payload) => makeRequest("/campaign/number-status", "POST", payload)}
+            />
+            <EndpointCard
+              title="Get Campaign Status"
+              endpoint="/campaign/status/{campaign_name}"
+              method="GET"
+              demoPayload={{ campaign_name: "Demo Campaign" }}
+              onTest={(payload) => makeRequest(`/campaign/status/${payload.campaign_name}`, "GET")}
+            />
+            <EndpointCard
+              title="Check Number Status"
+              endpoint="/campaign/number-status"
+              method="GET"
+              demoPayload={{ 
+                campaign_id: "demo_1",
+                number: "+1234567890"
+              }}
+              onTest={(payload) => makeRequest(`/campaign/number-status?campaign_id=${payload.campaign_id}&number=${payload.number}`, "GET")}
             />
           </TabsContent>
         </Tabs>
