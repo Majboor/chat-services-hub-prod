@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
@@ -13,23 +13,37 @@ import { apiService } from "@/services/apiService";
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
-  const { state } = useLocation();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
+  const [numberLists, setNumberLists] = useState<string[]>([]);
   const [campaignData, setCampaignData] = useState({
     name: "",
     content: "",
     goals: "",
     expectedResponse: "",
+    selectedList: "",
   });
   const [mediaFile, setMediaFile] = useState<File | null>(null);
 
+  useEffect(() => {
+    // Fetch available number lists
+    const fetchLists = async () => {
+      try {
+        const response = await apiService.createNumberList("", ""); // Using this to get list of available lists
+        setNumberLists(response.lists || []);
+      } catch (error) {
+        console.error("Error fetching number lists:", error);
+      }
+    };
+    fetchLists();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!campaignData.name || !campaignData.content) {
+    if (!campaignData.name || !campaignData.content || !campaignData.selectedList) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including selecting a number list",
         variant: "destructive",
       });
       return;
@@ -40,7 +54,7 @@ export default function CreateCampaign() {
       const formData = new FormData();
       formData.append("name", campaignData.name);
       formData.append("content", campaignData.content);
-      formData.append("number_list", state?.listName || "");
+      formData.append("number_list", campaignData.selectedList);
       formData.append("owner", "marketer1"); // TODO: Replace with actual username
       if (mediaFile) {
         formData.append("media", mediaFile);
@@ -84,6 +98,27 @@ export default function CreateCampaign() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <Label htmlFor="listSelect">Select Number List</Label>
+                <select
+                  id="listSelect"
+                  className="w-full p-2 border rounded-md"
+                  value={campaignData.selectedList}
+                  onChange={(e) => setCampaignData({
+                    ...campaignData,
+                    selectedList: e.target.value
+                  })}
+                  required
+                >
+                  <option value="">Select a list</option>
+                  {numberLists.map((list) => (
+                    <option key={list} value={list}>
+                      {list}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <Label htmlFor="name">Campaign Name</Label>
                 <Input
                   id="name"
@@ -93,6 +128,7 @@ export default function CreateCampaign() {
                     name: e.target.value
                   })}
                   placeholder="Enter campaign name"
+                  required
                 />
               </div>
 
@@ -107,6 +143,7 @@ export default function CreateCampaign() {
                   })}
                   placeholder="Enter message content"
                   className="h-32"
+                  required
                 />
               </div>
 

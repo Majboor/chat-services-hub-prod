@@ -41,7 +41,12 @@ export default function ReviewNumbers() {
   const loadCampaigns = async () => {
     try {
       const response = await apiService.listAllCampaigns();
-      setCampaigns(response);
+      // Ensure campaign names follow the expected pattern
+      const validCampaigns = response.map((campaign: Campaign) => ({
+        ...campaign,
+        name: campaign.name.replace(/[^a-zA-Z0-9-_]/g, '_') // Sanitize campaign names
+      }));
+      setCampaigns(validCampaigns);
     } catch (error: any) {
       toast({
         title: "Error",
