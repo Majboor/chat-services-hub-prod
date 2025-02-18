@@ -29,59 +29,78 @@ interface CampaignDetails {
   numbers?: NumberStatus[];
 }
 
-const demoData = {
-  register: {
-    username: "demo_user",
-    password: "demo_password",
-    role: "marketer"
-  },
-  login: {
-    username: "demo_user",
-    password: "demo_password"
-  },
-  addCredits: {
-    username: "demo_user",
-    amount: 100.50
-  },
-  removeCredits: {
-    username: "demo_user",
-    amount: 25.75
-  },
-  createList: {
-    list_name: "demo_list",
-    username: "demo_user"
-  },
-  addContact: {
-    list_name: "demo_list",
-    username: "demo_user",
-    number: "+1234567890",
-    name: "John Doe",
-    interests: "Technology",
-    age: "25-30",
-    location: "New York",
-    gender: "Male",
-    language: "English",
-    occupation: "Engineer",
-    preferred_contact_time: "Evening",
-    tags: "tech,engineering",
-    additional_details: {
-      social_media: {
-        facebook: "john.doe",
-        twitter: "@johndoe"
-      },
-      custom_fields: {
-        key1: "value1"
+const getTimestampSuffix = () => new Date().getTime().toString().slice(-4);
+
+const getDemoData = () => {
+  const timestamp = getTimestampSuffix();
+  return {
+    register: {
+      username: `demo_user_${timestamp}`,
+      password: "demo_password",
+      role: "marketer"
+    },
+    login: {
+      username: `demo_user_${timestamp}`,
+      password: "demo_password"
+    },
+    addCredits: {
+      username: `demo_crowd_${timestamp}`,
+      amount: 100.50
+    },
+    removeCredits: {
+      username: `demo_crowd_${timestamp}`,
+      amount: 25.75
+    },
+    createList: {
+      list_name: `demo_list_${timestamp}`,
+      username: `demo_user_${timestamp}`
+    },
+    addContact: {
+      list_name: `demo_list_${timestamp}`,
+      username: `demo_user_${timestamp}`,
+      number: "+1234567890",
+      name: "John Doe",
+      interests: "Technology",
+      age: "25-30",
+      location: "New York",
+      gender: "Male",
+      language: "English",
+      occupation: "Engineer",
+      preferred_contact_time: "Evening",
+      tags: "tech,engineering",
+      additional_details: {
+        social_media: {
+          facebook: "john.doe",
+          twitter: "@johndoe"
+        },
+        custom_fields: {
+          key1: "value1"
+        }
       }
     }
-  }
+  };
 };
 
-const campaignDemoData = {
-  name: "Demo Campaign",
-  username: "demo_user",
-  number_list: "demo_list",
-  content: "Hello! This is a demo campaign message."
+const getCrowdsourceDemo = () => {
+  const timestamp = getTimestampSuffix();
+  return {
+    register: {
+      username: `demo_crowd_${timestamp}`,
+      password: "demo_password",
+      role: "crowdsource"
+    }
+  };
 };
+
+const getCampaignDemoData = (username: string, listName: string) => ({
+  name: `Demo Campaign ${getTimestampSuffix()}`,
+  username,
+  number_list: listName,
+  content: "Hello! This is a demo campaign message."
+});
+
+const demoData = getDemoData();
+const crowdsourceDemo = getCrowdsourceDemo();
 
 const executionDemoData = {
   batch_size: 10,
@@ -97,14 +116,6 @@ const numberStatusDemoData = {
   additional_data: {
     delivery_time: new Date().toISOString(),
     custom_field: "value"
-  }
-};
-
-const crowdsourceDemo = {
-  register: {
-    username: "demo_crowdsource",
-    password: "demo_password",
-    role: "crowdsource"
   }
 };
 
@@ -229,6 +240,8 @@ const EndpointCard = ({
 };
 
 const FlowSection = () => {
+  const [demoData] = useState(getDemoData());
+  const [crowdsourceDemo] = useState(getCrowdsourceDemo());
   const [marketerAccount, setMarketerAccount] = useState<{ username: string } | null>(null);
   const [crowdsourceAccount, setCrowdsourceAccount] = useState<{ username: string, credits: number } | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
@@ -249,13 +262,9 @@ const FlowSection = () => {
       });
       const data = await response.json();
       
-      if (!response.ok && data.message) {
-        if (data.message.includes('already exists')) {
-          return data;
-        }
-        throw new Error(data.message);
+      if (!response.ok) {
+        throw new Error(data.message || 'API call failed');
       }
-      if (!response.ok) throw new Error('API call failed');
       return data;
     } catch (error) {
       setError((error as Error).message);
@@ -266,17 +275,12 @@ const FlowSection = () => {
   const createMarketerAccount = async () => {
     setLoading(true);
     try {
-      await makeApiCall('/auth/register', 'POST', demoData.register);
+      const response = await makeApiCall('/auth/register', 'POST', demoData.register);
       setMarketerAccount({ username: demoData.register.username });
       setCurrentStep(2);
+      setError(null);
     } catch (error) {
-      if ((error as Error).message.includes('already exists')) {
-        setMarketerAccount({ username: demoData.register.username });
-        setCurrentStep(2);
-        setError(null);
-      } else {
-        setError((error as Error).message);
-      }
+      setError((error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -292,18 +296,9 @@ const FlowSection = () => {
         credits: creditsResponse.credits || 0
       });
       setCurrentStep(3);
+      setError(null);
     } catch (error) {
-      if ((error as Error).message.includes('already exists')) {
-        const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceDemo.register.username}`, 'GET');
-        setCrowdsourceAccount({ 
-          username: crowdsourceDemo.register.username,
-          credits: creditsResponse.credits || 0
-        });
-        setCurrentStep(3);
-        setError(null);
-      } else {
-        setError((error as Error).message);
-      }
+      setError((error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -315,6 +310,9 @@ const FlowSection = () => {
       await makeApiCall('/numbers/create-list', 'POST', demoData.createList);
       await makeApiCall('/numbers/add', 'POST', demoData.addContact);
       setCurrentStep(4);
+      setError(null);
+    } catch (error) {
+      setError((error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -323,8 +321,13 @@ const FlowSection = () => {
   const createCampaign = async () => {
     setLoading(true);
     try {
-      await makeApiCall('/campaign/create', 'POST', campaignDemoData);
+      if (!marketerAccount) throw new Error('Marketer account not created');
+      const campaignData = getCampaignDemoData(marketerAccount.username, demoData.createList.list_name);
+      await makeApiCall('/campaign/create', 'POST', campaignData);
       setCurrentStep(5);
+      setError(null);
+    } catch (error) {
+      setError((error as Error).message);
     } finally {
       setLoading(false);
     }
