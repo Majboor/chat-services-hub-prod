@@ -208,7 +208,7 @@ export const apiService = {
   },
 
   getNumberLists: async (username: string) => {
-    const response = await fetch(`${BASE_URL}/numbers/lists?username=${username}`);
+    const response = await fetch(`${BASE_URL}/numbers/list?username=${username}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch lists: ${response.statusText}`);
     }
