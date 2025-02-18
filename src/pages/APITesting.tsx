@@ -272,10 +272,16 @@ const FlowSection = () => {
       const data = await response.json();
       
       if (!response.ok) {
+        if (response.status === 404 && endpoint.includes('/campaign/status/')) {
+          return { details: [] };
+        }
         throw new Error(data.error || data.message || 'API call failed');
       }
       return data;
     } catch (error) {
+      if (endpoint.includes('/campaign/status/')) {
+        return { details: [] };
+      }
       console.error("API Error:", error);
       const errorMessage = (error as Error).message;
       setError(errorMessage);
@@ -285,6 +291,33 @@ const FlowSection = () => {
         variant: "destructive",
       });
       throw error;
+    }
+  };
+
+  const selectCampaign = async (campaign: CampaignDetails) => {
+    setLoading(true);
+    try {
+      const numbersResponse = await makeApiCall(
+        `/numbers/list?list_name=${encodeURIComponent(campaign.number_list)}&username=${encodeURIComponent(campaign.owner)}`, 
+        'GET'
+      );
+      
+      const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
+      
+      const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => d.number));
+      const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
+      
+      setNumbers(availableNumbers);
+      setSelectedCampaign(campaign);
+      setError(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load campaign details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -379,37 +412,6 @@ const FlowSection = () => {
     try {
       const response = await makeApiCall('/campaign/list', 'GET');
       setCampaigns(response);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectCampaign = async (campaign: CampaignDetails) => {
-    setLoading(true);
-    try {
-      const numbersResponse = await makeApiCall(
-        `/numbers/list?list_name=${encodeURIComponent(campaign.number_list)}&username=${encodeURIComponent(campaign.owner)}`, 
-        'GET'
-      );
-      
-      try {
-        const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
-        const processedNumbers = new Set(statusResponse.details?.map((d: any) => d.number) || []);
-        const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
-        setNumbers(availableNumbers);
-      } catch (statusError) {
-        console.log("Campaign status not found, using all numbers");
-        setNumbers(numbersResponse);
-      }
-      
-      setSelectedCampaign(campaign);
-      setError(null);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load campaign details",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
