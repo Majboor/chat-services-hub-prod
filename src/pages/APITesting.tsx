@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +12,21 @@ const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 interface ApiResponse {
   status: number;
   data: any;
+}
+
+interface NumberStatus {
+  number: string;
+  name: string;
+  status?: 'pending' | 'sent' | 'failed';
+}
+
+interface CampaignDetails {
+  name: string;
+  owner: string;
+  number_list: string;
+  content: string;
+  media_files: string[];
+  numbers?: NumberStatus[];
 }
 
 const demoData = {
@@ -83,6 +97,14 @@ const numberStatusDemoData = {
   additional_data: {
     delivery_time: new Date().toISOString(),
     custom_field: "value"
+  }
+};
+
+const crowdsourceDemo = {
+  register: {
+    username: "demo_crowdsource",
+    password: "demo_password",
+    role: "crowdsource"
   }
 };
 
@@ -206,6 +228,290 @@ const EndpointCard = ({
   );
 };
 
+const FlowSection = () => {
+  const [marketerAccount, setMarketerAccount] = useState<{ username: string } | null>(null);
+  const [crowdsourceAccount, setCrowdsourceAccount] = useState<{ username: string, credits: number } | null>(null);
+  const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null);
+  const [numbers, setNumbers] = useState<NumberStatus[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+
+  const makeApiCall = async (endpoint: string, method: string, payload?: any) => {
+    try {
+      const response = await fetch(`${BASE_URL}${endpoint}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: payload ? JSON.stringify(payload) : undefined,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'API call failed');
+      return data;
+    } catch (error) {
+      setError((error as Error).message);
+      throw error;
+    }
+  };
+
+  const createMarketerAccount = async () => {
+    setLoading(true);
+    try {
+      const response = await makeApiCall('/auth/register', 'POST', demoData.register);
+      setMarketerAccount({ username: demoData.register.username });
+      setCurrentStep(2);
+    } catch (error) {
+      if ((error as Error).message.includes('already exists')) {
+        setMarketerAccount({ username: demoData.register.username });
+        setCurrentStep(2);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createCrowdsourceAccount = async () => {
+    setLoading(true);
+    try {
+      const response = await makeApiCall('/auth/register', 'POST', crowdsourceDemo.register);
+      const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceDemo.register.username}`, 'GET');
+      setCrowdsourceAccount({ 
+        username: crowdsourceDemo.register.username,
+        credits: creditsResponse.credits || 0
+      });
+      setCurrentStep(3);
+    } catch (error) {
+      if ((error as Error).message.includes('already exists')) {
+        const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceDemo.register.username}`, 'GET');
+        setCrowdsourceAccount({ 
+          username: crowdsourceDemo.register.username,
+          credits: creditsResponse.credits || 0
+        });
+        setCurrentStep(3);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createNumberList = async () => {
+    setLoading(true);
+    try {
+      await makeApiCall('/numbers/create-list', 'POST', demoData.createList);
+      await makeApiCall('/numbers/add', 'POST', demoData.addContact);
+      setCurrentStep(4);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createCampaign = async () => {
+    setLoading(true);
+    try {
+      await makeApiCall('/campaign/create', 'POST', campaignDemoData);
+      setCurrentStep(5);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCampaigns = async () => {
+    setLoading(true);
+    try {
+      const response = await makeApiCall('/campaign/list', 'GET');
+      setCampaigns(response);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectCampaign = async (campaign: CampaignDetails) => {
+    setLoading(true);
+    try {
+      const numbersResponse = await makeApiCall('/numbers/list', 'GET', {
+        list_name: campaign.number_list,
+        username: campaign.owner
+      });
+      
+      const statusResponse = await makeApiCall(`/campaign/status/${campaign.name}`, 'GET');
+      const processedNumbers = new Set(statusResponse.details.map((d: any) => d.number));
+      
+      const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
+      setNumbers(availableNumbers);
+      setSelectedCampaign(campaign);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateNumberStatus = async (number: string, status: 'sent' | 'failed') => {
+    setLoading(true);
+    try {
+      await makeApiCall('/campaign/number-status', 'POST', {
+        campaign_id: selectedCampaign?.name,
+        number,
+        status,
+        notes: status === 'sent' ? 'Message delivered successfully' : 'Message delivery failed',
+        error_message: status === 'failed' ? 'User rejected message' : '',
+        additional_data: {
+          delivery_time: new Date().toISOString()
+        }
+      });
+
+      if (status === 'sent' && crowdsourceAccount) {
+        await makeApiCall('/credits/add', 'POST', {
+          username: crowdsourceAccount.username,
+          amount: 0.5
+        });
+        
+        const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceAccount.username}`, 'GET');
+        setCrowdsourceAccount({
+          ...crowdsourceAccount,
+          credits: creditsResponse.credits
+        });
+      }
+
+      setNumbers(numbers.filter(n => n.number !== number));
+      
+      if (numbers.length <= 1) {
+        setError("Campaign completed! All numbers have been processed.");
+        setSelectedCampaign(null);
+        setNumbers([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Automated Testing Flow</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {error && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-md mb-4">
+                {error}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Step 1: Create Marketer Account</h3>
+              {marketerAccount ? (
+                <div className="text-green-600">✓ Marketer account created: {marketerAccount.username}</div>
+              ) : (
+                <Button onClick={createMarketerAccount} disabled={loading}>
+                  Create Marketer Account
+                </Button>
+              )}
+            </div>
+
+            {currentStep >= 2 && (
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Step 2: Create Crowdsource Account</h3>
+                {crowdsourceAccount ? (
+                  <div className="text-green-600">
+                    ✓ Crowdsource account created: {crowdsourceAccount.username}
+                    <div className="text-sm">Credits: {crowdsourceAccount.credits}</div>
+                  </div>
+                ) : (
+                  <Button onClick={createCrowdsourceAccount} disabled={loading}>
+                    Create Crowdsource Account
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {currentStep >= 3 && (
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Step 3: Create Number List</h3>
+                <Button onClick={createNumberList} disabled={loading || currentStep > 3}>
+                  Create Number List
+                </Button>
+              </div>
+            )}
+
+            {currentStep >= 4 && (
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Step 4: Create Campaign</h3>
+                <Button onClick={createCampaign} disabled={loading || currentStep > 4}>
+                  Create Campaign
+                </Button>
+              </div>
+            )}
+
+            {currentStep >= 5 && (
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Step 5: Process Campaign</h3>
+                <Button onClick={fetchCampaigns} disabled={loading}>
+                  Fetch Campaigns
+                </Button>
+
+                {campaigns.length > 0 && !selectedCampaign && (
+                  <div className="grid gap-4 mt-4">
+                    {campaigns.map((campaign) => (
+                      <Card key={campaign.name} className="cursor-pointer hover:bg-gray-50" onClick={() => selectCampaign(campaign)}>
+                        <CardHeader>
+                          <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-sm text-gray-600">
+                            Owner: {campaign.owner}
+                            <br />
+                            List: {campaign.number_list}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {selectedCampaign && (
+                  <div className="space-y-4 mt-4">
+                    <h4 className="font-medium">Processing Campaign: {selectedCampaign.name}</h4>
+                    {numbers.map((number) => (
+                      <Card key={number.number}>
+                        <CardContent className="flex items-center justify-between py-4">
+                          <div>
+                            <div className="font-medium">{number.name}</div>
+                            <div className="text-sm text-gray-600">{number.number}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              className="bg-green-50 hover:bg-green-100"
+                              onClick={() => updateNumberStatus(number.number, 'sent')}
+                              disabled={loading}
+                            >
+                              ✓
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="bg-red-50 hover:bg-red-100"
+                              onClick={() => updateNumberStatus(number.number, 'failed')}
+                              disabled={loading}
+                            >
+                              ✗
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export default function APITesting() {
   const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
     const url = `${BASE_URL}${endpoint}`;
@@ -245,12 +551,13 @@ export default function APITesting() {
         <h1 className="text-3xl font-bold">API Testing Interface</h1>
         
         <Tabs defaultValue="auth">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="auth">Authentication</TabsTrigger>
             <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="execution">Execution</TabsTrigger>
+            <TabsTrigger value="flow">Flow</TabsTrigger>
           </TabsList>
 
           <TabsContent value="auth" className="mt-6">
@@ -377,6 +684,10 @@ export default function APITesting() {
               method="GET"
               onTest={() => makeRequest("/campaign/number-status?campaign_id=demo_campaign&number=%2B1234567890", "GET")}
             />
+          </TabsContent>
+
+          <TabsContent value="flow" className="mt-6">
+            <FlowSection />
           </TabsContent>
         </Tabs>
       </div>
