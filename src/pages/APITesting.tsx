@@ -350,12 +350,12 @@ const FlowSection = () => {
   const selectCampaign = async (campaign: CampaignDetails) => {
     setLoading(true);
     try {
-      const numbersResponse = await makeApiCall('/numbers/list', 'GET', {
-        list_name: campaign.number_list,
-        username: campaign.owner
-      });
+      const numbersResponse = await makeApiCall(
+        `/numbers/list?list_name=${encodeURIComponent(campaign.number_list)}&username=${encodeURIComponent(campaign.owner)}`, 
+        'GET'
+      );
       
-      const statusResponse = await makeApiCall(`/campaign/status/${campaign.name}`, 'GET');
+      const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
       const processedNumbers = new Set(statusResponse.details.map((d: any) => d.number));
       
       const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
@@ -513,7 +513,15 @@ const FlowSection = () => {
 
 export default function APITesting() {
   const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
-    const url = `${BASE_URL}${endpoint}`;
+    let url = `${BASE_URL}${endpoint}`;
+    
+    if (method === "GET" && payload) {
+      const params = new URLSearchParams();
+      Object.entries(payload).forEach(([key, value]) => {
+        params.append(key, value as string);
+      });
+      url = `${url}?${params.toString()}`;
+    }
     
     const options: RequestInit = {
       method,
@@ -522,11 +530,13 @@ export default function APITesting() {
         : method !== "GET" 
           ? { 'Content-Type': 'application/json' }
           : {},
-      body: payload instanceof FormData 
-        ? payload 
-        : payload 
-          ? JSON.stringify(payload) 
-          : undefined,
+      body: method !== "GET" 
+        ? (payload instanceof FormData 
+          ? payload 
+          : payload 
+            ? JSON.stringify(payload) 
+            : undefined)
+        : undefined,
     };
 
     try {
@@ -573,6 +583,19 @@ export default function APITesting() {
           </TabsContent>
 
           <TabsContent value="contacts" className="mt-6">
+            <EndpointCard
+              title="List Numbers"
+              endpoint="/numbers/list"
+              method="GET"
+              demoPayload={{ 
+                list_name: getDemoData().createList.list_name,
+                username: getDemoData().register.username 
+              }}
+              onTest={(payload) => {
+                const params = new URLSearchParams(payload);
+                return makeRequest(`/numbers/list?${params.toString()}`, "GET");
+              }}
+            />
             <EndpointCard
               title="Create Number List"
               endpoint="/numbers/create-list"
