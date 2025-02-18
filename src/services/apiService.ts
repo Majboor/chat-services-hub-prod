@@ -92,7 +92,8 @@ export const apiService = {
   },
 
   getNextNumber: async (campaignId: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/campaign_${campaignId}/next-number`);
+    // Fixed URL construction to match the bash script
+    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/next-number`);
     return await response.json();
   },
 
@@ -122,7 +123,8 @@ export const apiService = {
   },
 
   getNextNumberForReview: async (campaignId: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/campaign_${campaignId}/review-next`);
+    // Fixed URL construction to match the bash script
+    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/review-next`);
     return await response.json();
   },
 
