@@ -1,4 +1,3 @@
-
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
@@ -37,8 +36,8 @@ export interface CampaignStatus {
     notes?: string;
     sent_at?: string;
     error_message?: string;
-    additional_data?: any;
-    number_details?: any;
+    additional_data?: string;
+    number_details?: string;
   }>;
 }
 
@@ -113,8 +112,21 @@ export const apiService = {
   },
 
   listPendingCampaigns: async () => {
-    const response = await fetch(`${BASE_URL}/campaign/list-pending`);
-    return await response.json();
+    try {
+      const response = await fetch(`${BASE_URL}/campaign/list-pending`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch pending campaigns');
+      }
+      const data = await response.text();
+      try {
+        return JSON.parse(data);
+      } catch {
+        return { pending: 0 }; // Default value if parsing fails
+      }
+    } catch (error: any) {
+      console.error("Error listing pending campaigns:", error);
+      throw error;
+    }
   },
 
   getNextNumber: async (campaignId: string) => {
@@ -147,8 +159,10 @@ export const apiService = {
     console.log("Getting status for campaign:", campaignId);
     try {
       const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch campaign status');
+      }
       const text = await response.text();
-      
       try {
         const jsonData = JSON.parse(text);
         console.log("Campaign status parsed successfully:", jsonData);

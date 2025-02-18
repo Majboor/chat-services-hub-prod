@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
@@ -26,7 +25,7 @@ export default function TestAPI() {
   const timestamp = Date.now();
   const form = useForm({
     defaultValues: {
-      username: "marketer1", // Fixed username to match bash script
+      username: "marketer1",
       password: "pass123",
       listName: `list_${timestamp}`,
       campaignName: `campaign_${timestamp}`,
@@ -164,13 +163,27 @@ export default function TestAPI() {
       }
 
       // Check final campaign status
-      const campaignStatus = await apiService.getCampaignStatus(campaignId);
-      addLog(`✅ Final campaign status: ${JSON.stringify(campaignStatus)}`);
-
-      // List pending campaigns
       addLog("➡️ Checking pending campaigns...");
-      const pendingCampaigns = await apiService.listPendingCampaigns();
-      addLog(`✅ Found ${pendingCampaigns.length} pending campaigns`);
+      try {
+        const pendingCampaigns = await apiService.listPendingCampaigns();
+        const pendingCount = typeof pendingCampaigns === 'string' 
+          ? JSON.parse(pendingCampaigns).pending || 0 
+          : pendingCampaigns.pending || 0;
+        addLog(`✅ Found ${pendingCount} pending campaigns`);
+      } catch (error: any) {
+        addLog(`⚠️ Could not fetch pending campaigns: ${error.message}`);
+      }
+
+      // Update final status check
+      try {
+        const campaignStatus = await apiService.getCampaignStatus(data.campaignName);
+        const statusMessage = 'message' in campaignStatus 
+          ? campaignStatus.message 
+          : JSON.stringify(campaignStatus);
+        addLog(`✅ Final campaign status: ${statusMessage}`);
+      } catch (error: any) {
+        addLog(`⚠️ Could not fetch final status: ${error.message}`);
+      }
 
       toast({
         title: "Test Completed",
