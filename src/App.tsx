@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,31 +14,37 @@ import APIIntegration from "./pages/APIIntegration";
 import APITesting from "./pages/APITesting";
 import TradingBot from "./pages/TradingBot";
 import AlertsService from "./pages/AlertsService";
+import TestAPI from "./pages/TestAPI";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/anonymous-message" element={<AnonymousMessage />} />
-          <Route path="/e-whatsapp-sim" element={<EWhatsAppSim />} />
-          <Route path="/otp-service" element={<OTPService />} />
-          <Route path="/marketing-leads" element={<MarketingLeads />} />
-          <Route path="/bulk-surveys" element={<BulkSurveys />} />
-          <Route path="/api-integration" element={<APIIntegration />} />
-          <Route path="/api-testing" element={<APITesting />} />
-          <Route path="/trading-bot" element={<TradingBot />} />
-          <Route path="/alerts-service" element={<AlertsService />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <div className="min-h-screen">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/anonymous-message" element={<AnonymousMessage />} />
+              <Route path="/e-whatsapp-sim" element={<EWhatsAppSim />} />
+              <Route path="/otp-service" element={<OTPService />} />
+              <Route path="/marketing-leads" element={<MarketingLeads />} />
+              <Route path="/bulk-surveys" element={<BulkSurveys />} />
+              <Route path="/api-integration" element={<APIIntegration />} />
+              <Route path="/trading-bot" element={<TradingBot />} />
+              <Route path="/alerts-service" element={<AlertsService />} />
+              <Route path="/api-testing" element={<APITesting />} />
+              <Route path="/test-api" element={<TestAPI />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
