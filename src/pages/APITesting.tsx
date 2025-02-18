@@ -125,8 +125,10 @@ const reviewDemoData = {
   notes: "Good response, follow up recommended"
 };
 
-const formatNumber = (number: string): string => {
-  return number.replace(/^\+/, '').trim();
+const formatNumber = (number: string | number | undefined): string => {
+  if (number === undefined || number === null) return '';
+  const stringNumber = String(number);
+  return stringNumber.replace(/^\+/, '').trim();
 };
 
 const EndpointCard = ({ 
@@ -264,7 +266,7 @@ const FlowSection = () => {
   const makeApiCall = async (endpoint: string, method: string, payload?: any) => {
     try {
       if (payload && typeof payload === 'object') {
-        if (payload.number) {
+        if ('number' in payload) {
           payload.number = formatNumber(payload.number);
         }
       }
@@ -382,10 +384,14 @@ const FlowSection = () => {
       
       const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
       
-      const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => formatNumber(d.number)));
-      const availableNumbers = numbersResponse.filter((n: NumberStatus) => 
-        !processedNumbers.has(formatNumber(n.number))
-      );
+      const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => {
+        return formatNumber(d.number);
+      }));
+      
+      const availableNumbers = numbersResponse.filter((n: NumberStatus) => {
+        const formattedNumber = formatNumber(n.number);
+        return !processedNumbers.has(formattedNumber);
+      });
       
       setNumbers(availableNumbers);
       setSelectedCampaign(campaign);
