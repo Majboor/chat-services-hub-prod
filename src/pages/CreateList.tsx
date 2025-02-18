@@ -73,6 +73,17 @@ export default function CreateList() {
     }
   };
 
+  const extractPhoneNumber = (phoneString: string): string => {
+    try {
+      const cleanString = phoneString.replace(/[\[\]']/g, '');
+      const numbers = cleanString.split(',').map(num => num.trim());
+      return numbers[0] || '';
+    } catch (error) {
+      console.error("Error parsing phone number:", error);
+      return '';
+    }
+  };
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -96,6 +107,15 @@ export default function CreateList() {
             
             setHeaders(headers);
             setCsvData(rows.slice(0, 5) as CSVRow[]);
+
+            const phoneColumnIndex = headers.findIndex(h => 
+              h.toLowerCase().includes('phone') || 
+              h.toLowerCase().includes('number') || 
+              h.toLowerCase().includes('mobile')
+            );
+            if (phoneColumnIndex !== -1) {
+              setNumberColumnIndex(headers[phoneColumnIndex]);
+            }
           }
         },
         error: (error) => {
@@ -149,15 +169,21 @@ export default function CreateList() {
 
     setIsProcessing(true);
     try {
-      // Create the number list
       await apiService.createNumberList(listName, username);
 
-      // Add numbers to the list
       for (const row of csvData) {
+        const rawPhoneNumber = row[numberColumnIndex];
+        const cleanedPhoneNumber = extractPhoneNumber(rawPhoneNumber);
+
+        if (!cleanedPhoneNumber) {
+          console.warn("Skipping invalid phone number:", rawPhoneNumber);
+          continue;
+        }
+
         const numberData = {
           list_name: listName,
           username: username,
-          number: row[numberColumnIndex],
+          number: cleanedPhoneNumber,
           name: row[selectedHeaders.name] || "",
           interests: row[selectedHeaders.interests] || "",
           age: row[selectedHeaders.age] || "",
