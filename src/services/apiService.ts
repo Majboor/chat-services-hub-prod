@@ -69,11 +69,13 @@ export const apiService = {
 
   // Campaigns
   createCampaign: async (formData: FormData) => {
+    console.log("Creating campaign with name:", formData.get('name'));
     const response = await fetch(`${BASE_URL}/campaign/create`, {
       method: 'POST',
       body: formData,
     });
     const data = await response.json();
+    console.log("Campaign creation response:", data);
     return {
       campaign_id: formData.get('name') as string,
       ...data
@@ -81,12 +83,15 @@ export const apiService = {
   },
 
   executeCampaign: async (campaignId: string, batch_size: number, offset: number) => {
+    console.log("Executing campaign:", campaignId);
     const response = await fetch(`${BASE_URL}/campaign/execute/${campaignId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ batch_size, offset }),
     });
-    return await response.json();
+    const data = await response.json();
+    console.log("Campaign execution response:", data);
+    return data;
   },
 
   listPendingCampaigns: async () => {
@@ -95,8 +100,11 @@ export const apiService = {
   },
 
   getNextNumber: async (campaignId: string) => {
+    console.log("Getting next number for campaign:", campaignId);
     const response = await fetch(`${BASE_URL}/campaign/${campaignId}/next-number`);
-    return await response.json();
+    const data = await response.json();
+    console.log("Next number response:", data);
+    return data;
   },
 
   processNumber: async (data: {
@@ -106,17 +114,28 @@ export const apiService = {
     notes: string;
     feedback: Record<string, any>;
   }) => {
+    console.log("Processing number for campaign:", data.campaign_id);
     const response = await fetch(`${BASE_URL}/campaign/process-number`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return await response.json();
+    const responseData = await response.json();
+    console.log("Process number response:", responseData);
+    return responseData;
   },
 
   getCampaignStatus: async (campaignId: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
-    return await response.json();
+    console.log("Getting status for campaign:", campaignId);
+    try {
+      const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
+      const data = await response.json();
+      console.log("Campaign status response:", data);
+      return data;
+    } catch (error) {
+      console.error("Error getting campaign status:", error);
+      throw error;
+    }
   },
 
   listAllCampaigns: async () => {
@@ -125,8 +144,11 @@ export const apiService = {
   },
 
   getNextNumberForReview: async (campaignId: string) => {
+    console.log("Getting next review number for campaign:", campaignId);
     const response = await fetch(`${BASE_URL}/campaign/${campaignId}/review-next`);
-    return await response.json();
+    const data = await response.json();
+    console.log("Next review number response:", data);
+    return data;
   },
 
   updateReview: async (data: {
@@ -135,11 +157,14 @@ export const apiService = {
     approved: boolean;
     notes: string;
   }) => {
+    console.log("Updating review for campaign:", data.campaign_id);
     const response = await fetch(`${BASE_URL}/campaign/update-review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return await response.json();
+    const responseData = await response.json();
+    console.log("Update review response:", responseData);
+    return responseData;
   },
 };
