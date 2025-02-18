@@ -1,4 +1,3 @@
-
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
@@ -78,24 +77,50 @@ const EndpointCard = ({
   endpoint, 
   method, 
   demoPayload,
-  onTest
+  onTest,
+  isMultipart = false
 }: { 
   title: string;
   endpoint: string;
   method: string;
   demoPayload?: any;
   onTest: (payload: any) => Promise<ApiResponse>;
+  isMultipart?: boolean;
 }) => {
   const [customPayload, setCustomPayload] = useState(
     demoPayload ? JSON.stringify(demoPayload, null, 2) : ""
   );
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<FileList | null>(null);
 
   const handleTest = async (useDemoData: boolean) => {
     try {
       setLoading(true);
-      const payload = method !== "GET" && !useDemoData ? JSON.parse(customPayload) : undefined;
+      let payload;
+      
+      if (isMultipart) {
+        const formData = new FormData();
+        const data = useDemoData ? demoPayload : JSON.parse(customPayload);
+        
+        // Add all fields to FormData
+        Object.entries(data).forEach(([key, value]) => {
+          if (key !== 'media') {
+            formData.append(key, value as string);
+          }
+        });
+
+        // Add media files if present
+        if (mediaFiles) {
+          Array.from(mediaFiles).forEach(file => {
+            formData.append('media', file);
+          });
+        }
+        payload = formData;
+      } else if (method !== "GET") {
+        payload = useDemoData ? demoPayload : JSON.parse(customPayload);
+      }
+
       const result = await onTest(payload);
       setResponse(result);
       toast.success("API call completed");
@@ -123,12 +148,25 @@ const EndpointCard = ({
       <CardContent>
         <div className="space-y-4">
           {method !== "GET" && (
-            <Textarea 
-              value={customPayload}
-              onChange={(e) => setCustomPayload(e.target.value)}
-              placeholder="Enter request payload (JSON)"
-              className="font-mono text-sm h-[200px]"
-            />
+            <>
+              <Textarea 
+                value={customPayload}
+                onChange={(e) => setCustomPayload(e.target.value)}
+                placeholder="Enter request payload (JSON)"
+                className="font-mono text-sm h-[200px]"
+              />
+              {isMultipart && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Media Files:</label>
+                  <Input
+                    type="file"
+                    multiple
+                    onChange={(e) => setMediaFiles(e.target.files)}
+                    className="cursor-pointer"
+                  />
+                </div>
+              )}
+            </>
           )}
           <div className="flex gap-2">
             <Button 
@@ -168,10 +206,16 @@ export default function APITesting() {
     
     const options: RequestInit = {
       method,
-      headers: {
-        ...(method !== "GET" ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: payload ? JSON.stringify(payload) : undefined,
+      headers: payload instanceof FormData 
+        ? {} // Let the browser set the correct Content-Type for FormData
+        : method !== "GET" 
+          ? { 'Content-Type': 'application/json' }
+          : {},
+      body: payload instanceof FormData 
+        ? payload 
+        : payload 
+          ? JSON.stringify(payload) 
+          : undefined,
     };
 
     try {
@@ -185,6 +229,14 @@ export default function APITesting() {
       console.error("API call failed:", error);
       throw error;
     }
+  };
+
+  // Update the demo data for campaign creation
+  const campaignDemoData = {
+    name: "Demo Campaign",
+    username: "demo_user",
+    number_list: "demo_list",
+    content: "Hello! This is a demo campaign message."
   };
 
   return (
@@ -270,13 +322,9 @@ export default function APITesting() {
               title="Create Campaign"
               endpoint="/campaign/create"
               method="POST"
-              demoPayload={{
-                name: "Demo Campaign",
-                username: "demo_user",
-                number_list: "demo_list",
-                content: "Hello from our demo campaign!"
-              }}
+              demoPayload={campaignDemoData}
               onTest={(payload) => makeRequest("/campaign/create", "POST", payload)}
+              isMultipart={true}
             />
             <EndpointCard
               title="List Campaigns"
