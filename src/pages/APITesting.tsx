@@ -128,7 +128,7 @@ const reviewDemoData = {
 const formatNumber = (number: string | number | undefined): string => {
   if (number === undefined || number === null) return '';
   const stringNumber = String(number);
-  return stringNumber.replace(/^\+/, '').replace(/\s+/g, '').trim();
+  return stringNumber.replace(/^\+/, '').replace(/\D/g, '');
 };
 
 const validateCampaignPayload = (payload: any) => {
@@ -196,6 +196,7 @@ const EndpointCard = ({
             description: (error as Error).message,
             variant: "destructive",
           });
+          setLoading(false);
           return;
         }
 
@@ -224,6 +225,7 @@ const EndpointCard = ({
             description: (error as Error).message,
             variant: "destructive",
           });
+          setLoading(false);
           return;
         }
 
@@ -234,7 +236,40 @@ const EndpointCard = ({
       
       const result = await onTest(payload);
       
+      if (endpoint.includes('/campaign/process-number')) {
+        if (result.status === 404) {
+          const errorData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+          if (errorData.error?.includes('Number not found')) {
+            toast({
+              title: "Error",
+              description: "Number not found in campaign. Please check the number and try again.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      
       if (endpoint.includes('campaign/status/')) {
+        if (result.status === 404) {
+          const errorData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+          if (errorData.error?.includes('No execution data')) {
+            setResponse({
+              status: 200,
+              data: { 
+                details: [],
+                message: "Campaign has not been executed yet. Please execute the campaign first." 
+              }
+            });
+            toast({
+              title: "Info",
+              description: "Campaign has not been executed yet. Please execute the campaign first.",
+            });
+            setLoading(false);
+            return;
+          }
+        }
         setResponse({
           status: result.status || 200,
           data: result.data || { details: [] }
@@ -258,7 +293,10 @@ const EndpointCard = ({
       if (endpoint.includes('campaign/status/')) {
         setResponse({
           status: 200,
-          data: { details: [] }
+          data: { 
+            details: [],
+            message: "Unable to fetch campaign status. Please try again."
+          }
         });
         return;
       }
@@ -387,7 +425,13 @@ const FlowSection = () => {
 
       if (endpoint.includes('/campaign/status/')) {
         if (response.status === 404) {
-          console.log('Campaign status not found - new campaign');
+          console.log('Campaign status check:', data);
+          if (data.error?.includes('No execution data')) {
+            return { 
+              details: [],
+              message: "Campaign has not been executed yet. Please execute the campaign first."
+            };
+          }
           return { details: [] };
         }
         if (!response.ok) {
@@ -395,6 +439,12 @@ const FlowSection = () => {
           return { details: [] };
         }
         return data;
+      }
+
+      if (endpoint.includes('/campaign/process-number') && response.status === 404) {
+        if (data.error?.includes('Number not found')) {
+          throw new Error("Number not found in campaign. Please check the number and try again.");
+        }
       }
 
       if (!response.ok) {
@@ -406,7 +456,10 @@ const FlowSection = () => {
       console.error("API Error:", error);
       
       if (endpoint.includes('/campaign/status/')) {
-        return { details: [] };
+        return { 
+          details: [],
+          message: "Unable to fetch campaign status. Please try again."
+        };
       }
       
       const errorMessage = (error as Error).message;
