@@ -1,5 +1,5 @@
 
-import { Navbar } from "@/components/Navbar";
+import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 
 export default function APITesting() {
