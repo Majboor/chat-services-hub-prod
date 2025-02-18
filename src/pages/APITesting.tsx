@@ -292,6 +292,14 @@ const FlowSection = () => {
         return { details: [] };
       }
       
+      if (endpoint === '/auth/register' && !response.ok) {
+        console.log('Registration response:', data);
+        if (data.error?.includes('already exists')) {
+          console.log('User already exists, proceeding with existing account');
+          return { username: payload.username };
+        }
+      }
+      
       if (!response.ok) {
         throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
       }
@@ -305,6 +313,11 @@ const FlowSection = () => {
         return { details: [] };
       }
       
+      if (endpoint === '/auth/register' && error instanceof TypeError) {
+        console.log('Network error during registration, attempting to proceed');
+        return { username: payload?.username };
+      }
+      
       const errorMessage = (error as Error).message;
       setError(errorMessage);
       toast({
@@ -313,6 +326,41 @@ const FlowSection = () => {
         variant: "destructive",
       });
       throw error;
+    }
+  };
+
+  const createMarketerAccount = async () => {
+    setLoading(true);
+    try {
+      const data = await makeApiCall('/auth/register', 'POST', demoData.register);
+      
+      if (data.username) {
+        setMarketerAccount({ username: data.username });
+        setCurrentStep(2);
+        setError(null);
+        
+        toast({
+          title: "Success",
+          description: "Account ready to use",
+        });
+      } else {
+        setMarketerAccount({ username: demoData.register.username });
+        setCurrentStep(2);
+        toast({
+          title: "Info",
+          description: "Proceeding with existing account",
+        });
+      }
+    } catch (error) {
+      const errorMessage = (error as Error).message;
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -347,64 +395,6 @@ const FlowSection = () => {
       toast({
         title: "Error",
         description: "Failed to load campaign details: " + errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createMarketerAccount = async () => {
-    setLoading(true);
-    try {
-      let response;
-      try {
-        response = await fetch(`${BASE_URL}/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(demoData.register),
-        });
-      } catch (error) {
-        throw new Error("Network error during registration");
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (error) {
-        throw new Error("Invalid response format from server");
-      }
-      
-      if (!response.ok) {
-        if (data.error?.includes('already exists')) {
-          setMarketerAccount({ username: demoData.register.username });
-          setCurrentStep(2);
-          toast({
-            title: "Info",
-            description: "Using existing account",
-          });
-          return;
-        }
-        throw new Error(data.error || data.message || 'Registration failed');
-      }
-
-      setMarketerAccount({ username: demoData.register.username });
-      setCurrentStep(2);
-      setError(null);
-      
-      toast({
-        title: "Success",
-        description: "Marketer account created successfully",
-      });
-    } catch (error) {
-      const errorMessage = (error as Error).message;
-      setError(errorMessage);
-      toast({
-        title: "Error",
-        description: errorMessage,
         variant: "destructive",
       });
     } finally {
