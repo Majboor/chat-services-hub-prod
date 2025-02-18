@@ -155,29 +155,29 @@ const makeRequest = async (endpoint: string, method: string, payload?: any): Pro
     };
 
     const response = await fetch(url, options);
-    const data = await response.json().catch(() => ({}));
-    
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.error("Failed to parse JSON response:", e);
+      data = {};
+    }
+
     if (endpoint.includes('/campaign/status/')) {
-      if (response.status === 404) {
-        if (data.error?.includes('No execution data')) {
-          return {
-            status: 200,
-            data: { 
-              details: [],
-              failed: 0,
-              pending: 0,
-              sent: 0,
-              total: 0,
-              message: "Campaign has not been executed yet"
-            }
-          };
-        }
+      if (response.status === 404 && data.error === "No execution data found") {
+        return {
+          status: 404,
+          data: {
+            error: "No execution data found",
+            details: []
+          }
+        };
       }
       return {
         status: response.status,
         data: {
           ...data,
-          details: data.details?.map((detail: any) => ({
+          details: (data.details || []).map((detail: any) => ({
             ...detail,
             additional_data: detail.additional_data || "{}",
             error_message: detail.error_message || null,
@@ -190,20 +190,20 @@ const makeRequest = async (endpoint: string, method: string, payload?: any): Pro
 
     if (endpoint.includes('/campaign/process-number')) {
       if (response.status === 404) {
-        const errorData = typeof data === 'string' ? JSON.parse(data) : data;
-        if (errorData.error?.includes('Number not found')) {
-          throw new Error("Number not found in campaign. Please check the number and try again.");
+        const parsedBody = typeof data === 'string' ? JSON.parse(data) : data;
+        if (parsedBody.error === "Number not found") {
+          return {
+            status: 404,
+            data: {
+              details: {
+                available_numbers: [],
+                campaign_id: parsedBody.details?.campaign_id,
+                number: parsedBody.details?.number
+              },
+              error: "Number not found"
+            }
+          };
         }
-      }
-      
-      if (response.ok) {
-        return {
-          status: response.status,
-          data: {
-            ...data,
-            message: data.message || "Number processed successfully"
-          }
-        };
       }
     }
 
@@ -211,51 +211,33 @@ const makeRequest = async (endpoint: string, method: string, payload?: any): Pro
       return {
         status: response.status,
         data: Array.isArray(data) ? data.map((campaign: any) => ({
-          ...campaign,
+          campaign_id: campaign.campaign_id,
           completed: campaign.completed || 0,
           pending: campaign.pending || 0,
-          total_numbers: campaign.total_numbers || 0
+          total_numbers: campaign.total_numbers || 0,
+          details: campaign.details || {}
         })) : data
       };
-    }
-
-    if (endpoint.includes('/campaign/list-pending')) {
-      return {
-        status: response.status,
-        data: Array.isArray(data) ? data.map((campaign: any) => ({
-          ...campaign,
-          pending_numbers: campaign.pending_numbers || 0
-        })) : data
-      };
-    }
-
-    if (endpoint.includes('/campaign/execute/')) {
-      if (response.ok) {
-        return {
-          status: response.status,
-          data: {
-            ...data,
-            message: "Campaign execution started",
-            total_new_numbers: data.numbers?.length || 0,
-            total_processed: 0
-          }
-        };
-      }
     }
 
     if (!response.ok) {
       throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
     }
 
-    return {
-      status: response.status,
-      data
-    };
+    return { status: response.status, data };
   } catch (error) {
     console.error("API Error:", error);
+    
     if (error instanceof TypeError && error.message === 'Load failed') {
-      throw new Error("Network error. Please check your connection and try again.");
+      return {
+        status: 500,
+        data: {
+          error_type: "http_server_error",
+          message: "Load failed"
+        }
+      };
     }
+    
     throw error;
   }
 };
