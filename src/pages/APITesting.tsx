@@ -36,6 +36,11 @@ interface CampaignDetails {
   numbers?: NumberStatus[];
 }
 
+interface CrowdsourceAccount {
+  username: string;
+  credits: number;
+}
+
 const getTimestampSuffix = () => new Date().getTime().toString().slice(-4);
 
 const getDemoData = () => {
@@ -242,6 +247,7 @@ const EndpointCard = ({
 const FlowSection = () => {
   const [demoData] = useState(getDemoData());
   const [marketerAccount, setMarketerAccount] = useState<{ username: string } | null>(null);
+  const [crowdsourceAccount, setCrowdsourceAccount] = useState<CrowdsourceAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null);
   const [numbers, setNumbers] = useState<NumberStatus[]>([]);
@@ -286,12 +292,12 @@ const FlowSection = () => {
 
   const createCrowdsourceAccount = async () => {
     setLoading(true);
+    const crowdsourceDemo = getCrowdsourceDemo();
     try {
       await makeApiCall('/auth/register', 'POST', crowdsourceDemo.register);
-      const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceDemo.register.username}`, 'GET');
-      setCrowdsourceAccount({ 
+      setCrowdsourceAccount({
         username: crowdsourceDemo.register.username,
-        credits: creditsResponse.credits || 0
+        credits: 0
       });
       setCurrentStep(3);
       setError(null);
@@ -363,29 +369,20 @@ const FlowSection = () => {
   const updateNumberStatus = async (number: string, status: 'sent' | 'failed') => {
     setLoading(true);
     try {
-      await makeApiCall('/campaign/number-status', 'POST', {
+      await makeApiCall('/campaign/process-number', 'POST', {
         campaign_id: selectedCampaign?.name,
         number,
         status,
         notes: status === 'sent' ? 'Message delivered successfully' : 'Message delivery failed',
-        error_message: status === 'failed' ? 'User rejected message' : '',
-        additional_data: {
-          delivery_time: new Date().toISOString()
+        feedback: status === 'sent' ? {
+          interest_level: "medium",
+          follow_up: true,
+          preferred_time: "evening"
+        } : {
+          error_type: "delivery_failed",
+          retry_recommended: true
         }
       });
-
-      if (status === 'sent' && crowdsourceAccount) {
-        await makeApiCall('/credits/add', 'POST', {
-          username: crowdsourceAccount.username,
-          amount: 0.5
-        });
-        
-        const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceAccount.username}`, 'GET');
-        setCrowdsourceAccount({
-          ...crowdsourceAccount,
-          credits: creditsResponse.credits
-        });
-      }
 
       setNumbers(numbers.filter(n => n.number !== number));
       
@@ -406,17 +403,17 @@ const FlowSection = () => {
           <CardTitle>API Testing Flow</CardTitle>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className={`p-4 rounded-md mb-4 ${
+              error.includes('already exists') 
+                ? 'bg-yellow-50 text-yellow-600' 
+                : 'bg-red-50 text-red-600'
+            }`}>
+              {error}
+            </div>
+          )}
+          
           <div className="space-y-4">
-            {error && (
-              <div className={`p-4 rounded-md mb-4 ${
-                error.includes('already exists') 
-                  ? 'bg-yellow-50 text-yellow-600' 
-                  : 'bg-red-50 text-red-600'
-              }`}>
-                {error}
-              </div>
-            )}
-            
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Step 1: Create Marketer Account</h3>
               {marketerAccount ? (
@@ -430,41 +427,25 @@ const FlowSection = () => {
 
             {currentStep >= 2 && (
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Step 2: Create Crowdsource Account</h3>
-                {crowdsourceAccount ? (
-                  <div className="text-green-600">
-                    ✓ Crowdsource account created: {crowdsourceAccount.username}
-                    <div className="text-sm">Credits: {crowdsourceAccount.credits}</div>
-                  </div>
-                ) : (
-                  <Button onClick={createCrowdsourceAccount} disabled={loading}>
-                    Create Crowdsource Account
-                  </Button>
-                )}
+                <h3 className="text-lg font-semibold">Step 2: Create Number List</h3>
+                <Button onClick={() => createNumberList()} disabled={loading || currentStep > 2}>
+                  Create Number List
+                </Button>
               </div>
             )}
 
             {currentStep >= 3 && (
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Step 3: Create Number List</h3>
-                <Button onClick={createNumberList} disabled={loading || currentStep > 3}>
-                  Create Number List
+                <h3 className="text-lg font-semibold">Step 3: Create Campaign</h3>
+                <Button onClick={() => createCampaign()} disabled={loading || currentStep > 3}>
+                  Create Campaign
                 </Button>
               </div>
             )}
 
             {currentStep >= 4 && (
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Step 4: Create Campaign</h3>
-                <Button onClick={createCampaign} disabled={loading || currentStep > 4}>
-                  Create Campaign
-                </Button>
-              </div>
-            )}
-
-            {currentStep >= 5 && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Step 5: Process Campaign</h3>
+                <h3 className="text-lg font-semibold">Step 4: Process Campaign</h3>
                 <Button onClick={fetchCampaigns} disabled={loading}>
                   Fetch Campaigns
                 </Button>
