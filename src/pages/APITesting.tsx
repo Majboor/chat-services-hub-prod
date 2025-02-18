@@ -220,7 +220,17 @@ export default function APITesting() {
 
     try {
       const response = await fetch(url, options);
-      const data = await response.json();
+      const text = await response.text(); // First get response as text
+      
+      let data;
+      try {
+        // Try to parse as JSON
+        data = text ? JSON.parse(text) : null;
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", text);
+        throw new Error("Invalid JSON response from server");
+      }
+      
       return {
         status: response.status,
         data
