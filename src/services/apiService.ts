@@ -1,3 +1,4 @@
+
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
@@ -22,6 +23,23 @@ export interface CampaignDetails {
   name: string;
   number_list: string;
   owner: string;
+}
+
+export interface CampaignStatus {
+  failed: number;
+  pending: number;
+  sent: number;
+  total: number;
+  details?: Array<{
+    campaign_id: string;
+    number: string;
+    status: 'pending' | 'sent' | 'failed';
+    notes?: string;
+    sent_at?: string;
+    error_message?: string;
+    additional_data?: any;
+    number_details?: any;
+  }>;
 }
 
 export const apiService = {
@@ -125,14 +143,18 @@ export const apiService = {
     return responseData;
   },
 
-  getCampaignStatus: async (campaignId: string) => {
+  getCampaignStatus: async (campaignId: string): Promise<CampaignStatus | { message: string }> => {
     console.log("Getting status for campaign:", campaignId);
     try {
       const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
       const text = await response.text();
+      
       try {
-        return JSON.parse(text);
-      } catch {
+        const jsonData = JSON.parse(text);
+        console.log("Campaign status parsed successfully:", jsonData);
+        return jsonData;
+      } catch (parseError) {
+        console.log("Campaign status is not JSON, returning as message:", text);
         return { message: text };
       }
     } catch (error) {
