@@ -18,6 +18,7 @@ import { useForm } from "react-hook-form";
 import { apiService } from "@/services/apiService";
 import { useToast } from "@/hooks/use-toast";
 import { APIDocumentation } from "@/components/api-docs/APIDocumentation";
+import { sanitizeCampaignName } from "@/utils/sanitize";
 
 export default function TestAPI() {
   const { toast } = useToast();
@@ -30,8 +31,8 @@ export default function TestAPI() {
     defaultValues: {
       username: "marketer1",
       password: "pass123",
-      listName: `list_${timestamp}`,
-      campaignName: `campaign_${timestamp}`,
+      listName: sanitizeCampaignName(`list_${timestamp}`),
+      campaignName: sanitizeCampaignName(`campaign_${timestamp}`),
     },
   });
 
@@ -54,15 +55,16 @@ export default function TestAPI() {
       }
 
       // Create number list
+      const sanitizedListName = sanitizeCampaignName(data.listName);
       addLog("➡️ Creating number list...");
-      await apiService.createNumberList(data.listName, data.username);
+      await apiService.createNumberList(sanitizedListName, data.username);
       addLog("✅ Number list created successfully");
 
       // Add numbers to list
       addLog("➡️ Adding numbers to list...");
       for (let i = 1; i <= 5; i++) {
         await apiService.addNumberToList({
-          list_name: data.listName,
+          list_name: sanitizedListName,
           username: data.username,
           number: `+1234567890${i}`,
           name: `Test User ${i}`,
@@ -81,9 +83,10 @@ export default function TestAPI() {
       // Create campaign with media file
       addLog("➡️ Creating campaign...");
       const formData = new FormData();
-      formData.append("name", data.campaignName);
+      const sanitizedCampaignName = sanitizeCampaignName(data.campaignName);
+      formData.append("name", sanitizedCampaignName);
       formData.append("username", data.username);
-      formData.append("number_list", data.listName);
+      formData.append("number_list", sanitizedListName);
       formData.append("content", "Test campaign message");
       
       if (fileInputRef.current?.files?.[0]) {

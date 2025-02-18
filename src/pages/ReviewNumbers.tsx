@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
@@ -7,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiService } from "@/services/apiService";
 import { CheckIcon, XIcon } from "lucide-react";
+import { sanitizeCampaignName } from "@/utils/sanitize";
 
 interface Campaign {
   name: string;
@@ -25,11 +25,6 @@ interface NumberDetails {
   sent_at?: string;
   status: string;
 }
-
-// Helper function to sanitize campaign names
-const sanitizeCampaignName = (name: string) => {
-  return name.replace(/[^a-zA-Z0-9-_]/g, '_');
-};
 
 export default function ReviewNumbers() {
   const { toast } = useToast();
@@ -66,9 +61,8 @@ export default function ReviewNumbers() {
     
     setIsLoading(true);
     try {
-      // Sanitize campaign name when sending it
       const sanitizedCampaign = sanitizeCampaignName(selectedCampaign);
-      console.log("Requesting next number for campaign:", sanitizedCampaign); // Debug log
+      console.log("Requesting next number for campaign:", sanitizedCampaign);
       const number = await apiService.getNextNumberForReview(sanitizedCampaign);
       setCurrentNumber(number);
     } catch (error: any) {
@@ -87,7 +81,6 @@ export default function ReviewNumbers() {
 
     setIsLoading(true);
     try {
-      // Sanitize campaign name when sending it
       const sanitizedCampaign = sanitizeCampaignName(selectedCampaign);
       await apiService.updateReview({
         campaign_id: sanitizedCampaign,
@@ -113,7 +106,6 @@ export default function ReviewNumbers() {
   };
 
   const handleCampaignSelect = (campaignName: string) => {
-    // Sanitize campaign name when selecting it
     const sanitizedName = sanitizeCampaignName(campaignName);
     setSelectedCampaign(sanitizedName);
     setCurrentNumber(null);
