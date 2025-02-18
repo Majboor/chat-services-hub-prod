@@ -157,24 +157,89 @@ const makeRequest = async (endpoint: string, method: string, payload?: any): Pro
     const response = await fetch(url, options);
     const data = await response.json().catch(() => ({}));
     
-    if (response.status === 404) {
-      if (endpoint.includes('/campaign/process-number')) {
+    if (endpoint.includes('/campaign/status/')) {
+      if (response.status === 404) {
+        if (data.error?.includes('No execution data')) {
+          return {
+            status: 200,
+            data: { 
+              details: [],
+              failed: 0,
+              pending: 0,
+              sent: 0,
+              total: 0,
+              message: "Campaign has not been executed yet"
+            }
+          };
+        }
+      }
+      return {
+        status: response.status,
+        data: {
+          ...data,
+          details: data.details?.map((detail: any) => ({
+            ...detail,
+            additional_data: detail.additional_data || "{}",
+            error_message: detail.error_message || null,
+            notes: detail.notes || null,
+            sent_at: detail.sent_at || null
+          }))
+        }
+      };
+    }
+
+    if (endpoint.includes('/campaign/process-number')) {
+      if (response.status === 404) {
         const errorData = typeof data === 'string' ? JSON.parse(data) : data;
         if (errorData.error?.includes('Number not found')) {
           throw new Error("Number not found in campaign. Please check the number and try again.");
         }
       }
       
-      if (endpoint.includes('/campaign/status/')) {
-        if (data.error?.includes('No execution data')) {
-          return {
-            status: 200,
-            data: { 
-              details: [],
-              message: "Campaign has not been executed yet. Please execute the campaign first."
-            }
-          };
-        }
+      if (response.ok) {
+        return {
+          status: response.status,
+          data: {
+            ...data,
+            message: data.message || "Number processed successfully"
+          }
+        };
+      }
+    }
+
+    if (endpoint.includes('/campaign/list-all')) {
+      return {
+        status: response.status,
+        data: Array.isArray(data) ? data.map((campaign: any) => ({
+          ...campaign,
+          completed: campaign.completed || 0,
+          pending: campaign.pending || 0,
+          total_numbers: campaign.total_numbers || 0
+        })) : data
+      };
+    }
+
+    if (endpoint.includes('/campaign/list-pending')) {
+      return {
+        status: response.status,
+        data: Array.isArray(data) ? data.map((campaign: any) => ({
+          ...campaign,
+          pending_numbers: campaign.pending_numbers || 0
+        })) : data
+      };
+    }
+
+    if (endpoint.includes('/campaign/execute/')) {
+      if (response.ok) {
+        return {
+          status: response.status,
+          data: {
+            ...data,
+            message: "Campaign execution started",
+            total_new_numbers: data.numbers?.length || 0,
+            total_processed: 0
+          }
+        };
       }
     }
 
