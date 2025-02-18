@@ -38,15 +38,21 @@ export default function CreateList() {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    Papa.parse(file, {
-      complete: (results) => {
-        const parsedHeaders = results.data[0] as string[];
-        setHeaders(parsedHeaders);
-        // Show only first 5 rows for preview
-        setCsvData(results.data.slice(1, 6) as CSVRow[]);
-      },
-      header: true,
-    });
+    if (file) {
+      Papa.parse(file, {
+        complete: (results) => {
+          if (results.data && results.data.length > 0) {
+            const firstRow = results.data[0] as string[];
+            if (Array.isArray(firstRow)) {
+              setHeaders(firstRow);
+              // Show only first 5 rows for preview, starting from second row
+              setCsvData(results.data.slice(1, 6) as CSVRow[]);
+            }
+          }
+        },
+        header: true,
+      });
+    }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -154,7 +160,7 @@ export default function CreateList() {
             </CardContent>
           </Card>
 
-          {csvData.length > 0 && (
+          {csvData.length > 0 && headers.length > 0 && (
             <>
               <Card>
                 <CardHeader>
