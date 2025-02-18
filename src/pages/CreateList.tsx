@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
@@ -34,8 +33,45 @@ export default function CreateList() {
   const [numberColumnIndex, setNumberColumnIndex] = useState<string>("");
   const [customFields, setCustomFields] = useState<{[key: string]: string}[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const handleAuth = async () => {
+    if (!username || !password) {
+      toast({
+        title: "Error",
+        description: "Please enter both username and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await apiService.registerUser(username, password, "marketer");
+      console.log("Register response:", response);
+      
+      if (response.message === "User created successfully") {
+        setIsAuthenticated(true);
+        toast({
+          title: "Success",
+          description: "User registered successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to register user",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to register user",
+        variant: "destructive",
+      });
+    }
+  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -93,10 +129,19 @@ export default function CreateList() {
   };
 
   const handleSubmit = async () => {
-    if (!listName || !numberColumnIndex || !username || !password) {
+    if (!isAuthenticated) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields including username and password",
+        description: "Please authenticate first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!listName || !numberColumnIndex) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -104,10 +149,6 @@ export default function CreateList() {
 
     setIsProcessing(true);
     try {
-      // First register/authenticate the user
-      const registerResponse = await apiService.registerUser(username, password, "marketer");
-      console.log("Register response:", registerResponse);
-
       // Create the number list
       await apiService.createNumberList(listName, username);
 
@@ -115,7 +156,7 @@ export default function CreateList() {
       for (const row of csvData) {
         const numberData = {
           list_name: listName,
-          username: username, // Use the authenticated username
+          username: username,
           number: row[numberColumnIndex],
           name: row[selectedHeaders.name] || "",
           interests: row[selectedHeaders.interests] || "",
@@ -142,11 +183,10 @@ export default function CreateList() {
         description: "List created successfully",
       });
 
-      // Pass the username to the campaign creation page
       navigate("/create-campaign", { 
         state: { 
           listName,
-          username // Pass the username to the next page
+          username
         }
       });
     } catch (error: any) {
@@ -194,159 +234,169 @@ export default function CreateList() {
                   required
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload CSV</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div 
-                {...getRootProps()} 
-                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
-                  ${isDragActive ? 'border-primary bg-primary/10' : 'border-gray-300'}`}
+              <Button 
+                onClick={handleAuth}
+                disabled={isProcessing}
               >
-                <input {...getInputProps()} />
-                {isDragActive ? (
-                  <p>Drop the CSV file here...</p>
-                ) : (
-                  <p>Drag and drop a CSV file here, or click to select</p>
-                )}
-              </div>
+                {isAuthenticated ? "Authenticated" : "Authenticate"}
+              </Button>
             </CardContent>
           </Card>
 
-          {csvData.length > 0 && headers.length > 0 && (
+          {isAuthenticated && (
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Configure List</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="listName">List Name</Label>
-                    <Input 
-                      id="listName"
-                      value={listName} 
-                      onChange={(e) => setListName(e.target.value)}
-                      placeholder="Enter list name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Number Column</Label>
-                    <select 
-                      className="w-full p-2 border rounded-md"
-                      value={numberColumnIndex}
-                      onChange={(e) => setNumberColumnIndex(e.target.value)}
-                    >
-                      <option value="">Select number column</option>
-                      {headers.map((header) => (
-                        <option key={header} value={header}>
-                          {header}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <Label>Map Fields</Label>
-                    {["name", "interests", "age", "location", "gender", "language", 
-                      "occupation", "preferred_contact_time", "tags"].map((field) => (
-                      <div key={field} className="flex gap-2 items-center mt-2">
-                        <Label className="w-40">{field}</Label>
-                        <select 
-                          className="w-full p-2 border rounded-md"
-                          value={selectedHeaders[field] || ""}
-                          onChange={(e) => setSelectedHeaders({
-                            ...selectedHeaders,
-                            [field]: e.target.value
-                          })}
-                        >
-                          <option value="">None</option>
-                          {headers.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div>
-                    <Label>Custom Fields</Label>
-                    {customFields.map((field, index) => (
-                      <div key={index} className="flex gap-2 mt-2">
-                        <Input
-                          placeholder="Field name"
-                          value={field.key}
-                          onChange={(e) => updateCustomField(index, 'key', e.target.value)}
-                        />
-                        <select 
-                          className="w-full p-2 border rounded-md"
-                          value={field.value}
-                          onChange={(e) => updateCustomField(index, 'value', e.target.value)}
-                        >
-                          <option value="">Select column</option>
-                          {headers.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                    <Button 
-                      variant="outline" 
-                      onClick={addCustomField}
-                      className="mt-2"
-                    >
-                      Add Custom Field
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview (First 5 Rows)</CardTitle>
+                  <CardTitle>Upload CSV</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHead key={header}>{header}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {csvData.map((row, rowIndex) => (
-                          <TableRow key={rowIndex}>
-                            {headers.map((header) => (
-                              <TableCell key={header}>
-                                {row[header]}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div 
+                    {...getRootProps()} 
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
+                      ${isDragActive ? 'border-primary bg-primary/10' : 'border-gray-300'}`}
+                  >
+                    <input {...getInputProps()} />
+                    {isDragActive ? (
+                      <p>Drop the CSV file here...</p>
+                    ) : (
+                      <p>Drag and drop a CSV file here, or click to select</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleSubmit}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? "Processing..." : "Create List & Continue"}
-                </Button>
-              </div>
+              {csvData.length > 0 && headers.length > 0 && (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Configure List</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="listName">List Name</Label>
+                        <Input 
+                          id="listName"
+                          value={listName} 
+                          onChange={(e) => setListName(e.target.value)}
+                          placeholder="Enter list name"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Number Column</Label>
+                        <select 
+                          className="w-full p-2 border rounded-md"
+                          value={numberColumnIndex}
+                          onChange={(e) => setNumberColumnIndex(e.target.value)}
+                        >
+                          <option value="">Select number column</option>
+                          {headers.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label>Map Fields</Label>
+                        {["name", "interests", "age", "location", "gender", "language", 
+                          "occupation", "preferred_contact_time", "tags"].map((field) => (
+                          <div key={field} className="flex gap-2 items-center mt-2">
+                            <Label className="w-40">{field}</Label>
+                            <select 
+                              className="w-full p-2 border rounded-md"
+                              value={selectedHeaders[field] || ""}
+                              onChange={(e) => setSelectedHeaders({
+                                ...selectedHeaders,
+                                [field]: e.target.value
+                              })}
+                            >
+                              <option value="">None</option>
+                              {headers.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div>
+                        <Label>Custom Fields</Label>
+                        {customFields.map((field, index) => (
+                          <div key={index} className="flex gap-2 mt-2">
+                            <Input
+                              placeholder="Field name"
+                              value={field.key}
+                              onChange={(e) => updateCustomField(index, 'key', e.target.value)}
+                            />
+                            <select 
+                              className="w-full p-2 border rounded-md"
+                              value={field.value}
+                              onChange={(e) => updateCustomField(index, 'value', e.target.value)}
+                            >
+                              <option value="">Select column</option>
+                              {headers.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                        <Button 
+                          variant="outline" 
+                          onClick={addCustomField}
+                          className="mt-2"
+                        >
+                          Add Custom Field
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Preview (First 5 Rows)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {headers.map((header) => (
+                                <TableHead key={header}>{header}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {csvData.map((row, rowIndex) => (
+                              <TableRow key={rowIndex}>
+                                {headers.map((header) => (
+                                  <TableCell key={header}>
+                                    {row[header]}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={handleSubmit}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? "Processing..." : "Create List & Continue"}
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
