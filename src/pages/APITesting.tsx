@@ -18,6 +18,13 @@ interface NumberStatus {
   number: string;
   name: string;
   status?: 'pending' | 'sent' | 'failed';
+  feedback?: {
+    interest_level?: string;
+    follow_up?: boolean;
+    preferred_time?: string;
+    error_type?: string;
+    retry_recommended?: boolean;
+  };
 }
 
 interface CampaignDetails {
@@ -43,14 +50,6 @@ const getDemoData = () => {
       username: `demo_user_${timestamp}`,
       password: "demo_password"
     },
-    addCredits: {
-      username: `demo_crowd_${timestamp}`,
-      amount: 100.50
-    },
-    removeCredits: {
-      username: `demo_crowd_${timestamp}`,
-      amount: 25.75
-    },
     createList: {
       list_name: `demo_list_${timestamp}`,
       username: `demo_user_${timestamp}`
@@ -68,15 +67,12 @@ const getDemoData = () => {
       occupation: "Engineer",
       preferred_contact_time: "Evening",
       tags: "tech,engineering",
-      additional_details: {
+      additional_details: JSON.stringify({
         social_media: {
           facebook: "john.doe",
           twitter: "@johndoe"
-        },
-        custom_fields: {
-          key1: "value1"
         }
-      }
+      })
     }
   };
 };
@@ -99,9 +95,6 @@ const getCampaignDemoData = (username: string, listName: string) => ({
   content: "Hello! This is a demo campaign message."
 });
 
-const demoData = getDemoData();
-const crowdsourceDemo = getCrowdsourceDemo();
-
 const executionDemoData = {
   batch_size: 10,
   offset: 0
@@ -112,11 +105,18 @@ const numberStatusDemoData = {
   number: "+1234567890",
   status: "sent",
   notes: "Message delivered successfully",
-  error_message: "",
-  additional_data: {
-    delivery_time: new Date().toISOString(),
-    custom_field: "value"
+  feedback: {
+    interest_level: "high",
+    follow_up: true,
+    preferred_time: "evening"
   }
+};
+
+const reviewDemoData = {
+  campaign_id: "demo_campaign",
+  number: "+1234567890",
+  approved: true,
+  notes: "Good response, follow up recommended"
 };
 
 const EndpointCard = ({ 
@@ -241,9 +241,7 @@ const EndpointCard = ({
 
 const FlowSection = () => {
   const [demoData] = useState(getDemoData());
-  const [crowdsourceDemo] = useState(getCrowdsourceDemo());
   const [marketerAccount, setMarketerAccount] = useState<{ username: string } | null>(null);
-  const [crowdsourceAccount, setCrowdsourceAccount] = useState<{ username: string, credits: number } | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null);
   const [numbers, setNumbers] = useState<NumberStatus[]>([]);
@@ -405,7 +403,7 @@ const FlowSection = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Automated Testing Flow</CardTitle>
+          <CardTitle>API Testing Flow</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -576,10 +574,10 @@ export default function APITesting() {
         <Tabs defaultValue="auth">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="auth">Authentication</TabsTrigger>
-            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="execution">Execution</TabsTrigger>
+            <TabsTrigger value="review">Review</TabsTrigger>
             <TabsTrigger value="flow">Flow</TabsTrigger>
           </TabsList>
 
@@ -590,36 +588,6 @@ export default function APITesting() {
               method="POST"
               demoPayload={demoData.register}
               onTest={(payload) => makeRequest("/auth/register", "POST", payload)}
-            />
-            <EndpointCard
-              title="Login"
-              endpoint="/auth/login"
-              method="POST"
-              demoPayload={demoData.login}
-              onTest={(payload) => makeRequest("/auth/login", "POST", payload)}
-            />
-          </TabsContent>
-
-          <TabsContent value="credits" className="mt-6">
-            <EndpointCard
-              title="Add Credits"
-              endpoint="/credits/add"
-              method="POST"
-              demoPayload={demoData.addCredits}
-              onTest={(payload) => makeRequest("/credits/add", "POST", payload)}
-            />
-            <EndpointCard
-              title="Remove Credits"
-              endpoint="/credits/remove"
-              method="POST"
-              demoPayload={demoData.removeCredits}
-              onTest={(payload) => makeRequest("/credits/remove", "POST", payload)}
-            />
-            <EndpointCard
-              title="Check Credits"
-              endpoint="/credits/check/{username}"
-              method="GET"
-              onTest={() => makeRequest("/credits/check/demo_user", "GET")}
             />
           </TabsContent>
 
@@ -632,28 +600,11 @@ export default function APITesting() {
               onTest={(payload) => makeRequest("/numbers/create-list", "POST", payload)}
             />
             <EndpointCard
-              title="List Numbers"
-              endpoint="/numbers/list"
-              method="GET"
-              onTest={() => makeRequest("/numbers/list?list_name=demo_list&username=demo_user", "GET")}
-            />
-            <EndpointCard
               title="Add Contact"
               endpoint="/numbers/add"
               method="POST"
               demoPayload={demoData.addContact}
               onTest={(payload) => makeRequest("/numbers/add", "POST", payload)}
-            />
-            <EndpointCard
-              title="Remove Numbers"
-              endpoint="/numbers/remove"
-              method="DELETE"
-              demoPayload={{
-                list_name: "demo_list",
-                username: "demo_user",
-                numbers: ["+1234567890"]
-              }}
-              onTest={(payload) => makeRequest("/numbers/remove", "DELETE", payload)}
             />
           </TabsContent>
 
@@ -667,45 +618,55 @@ export default function APITesting() {
               isMultipart={true}
             />
             <EndpointCard
-              title="List Campaigns"
-              endpoint="/campaign/list"
+              title="List All Campaigns"
+              endpoint="/campaign/list-all"
               method="GET"
-              onTest={() => makeRequest("/campaign/list", "GET")}
+              onTest={() => makeRequest("/campaign/list-all", "GET")}
             />
             <EndpointCard
-              title="Get Campaign Details"
-              endpoint="/campaign/{name}"
+              title="List Pending Campaigns"
+              endpoint="/campaign/list-pending"
               method="GET"
-              onTest={() => makeRequest("/campaign/Demo%20Campaign", "GET")}
+              onTest={() => makeRequest("/campaign/list-pending", "GET")}
             />
           </TabsContent>
 
           <TabsContent value="execution" className="mt-6">
             <EndpointCard
-              title="Start Campaign Execution"
+              title="Execute Campaign"
               endpoint="/campaign/execute/{campaign_name}"
               method="POST"
               demoPayload={executionDemoData}
               onTest={(payload) => makeRequest("/campaign/execute/Demo%20Campaign", "POST", payload)}
             />
             <EndpointCard
-              title="Update Number Status"
-              endpoint="/campaign/number-status"
+              title="Get Next Number"
+              endpoint="/campaign/{campaign_name}/next-number"
+              method="GET"
+              onTest={() => makeRequest("/campaign/Demo%20Campaign/next-number", "GET")}
+            />
+            <EndpointCard
+              title="Process Number"
+              endpoint="/campaign/process-number"
               method="POST"
               demoPayload={numberStatusDemoData}
-              onTest={(payload) => makeRequest("/campaign/number-status", "POST", payload)}
+              onTest={(payload) => makeRequest("/campaign/process-number", "POST", payload)}
+            />
+          </TabsContent>
+
+          <TabsContent value="review" className="mt-6">
+            <EndpointCard
+              title="Get Next Number for Review"
+              endpoint="/campaign/{campaign_name}/review-next"
+              method="GET"
+              onTest={() => makeRequest("/campaign/Demo%20Campaign/review-next", "GET")}
             />
             <EndpointCard
-              title="Get Campaign Status"
-              endpoint="/campaign/status/{campaign_name}"
-              method="GET"
-              onTest={() => makeRequest("/campaign/status/Demo%20Campaign", "GET")}
-            />
-            <EndpointCard
-              title="Check Number Status"
-              endpoint="/campaign/number-status"
-              method="GET"
-              onTest={() => makeRequest("/campaign/number-status?campaign_id=demo_campaign&number=%2B1234567890", "GET")}
+              title="Update Review"
+              endpoint="/campaign/update-review"
+              method="POST"
+              demoPayload={reviewDemoData}
+              onTest={(payload) => makeRequest("/campaign/update-review", "POST", payload)}
             />
           </TabsContent>
 
