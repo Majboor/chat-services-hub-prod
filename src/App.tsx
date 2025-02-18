@@ -12,6 +12,7 @@ import OTPService from "./pages/OTPService";
 import MarketingLeads from "./pages/MarketingLeads";
 import BulkSurveys from "./pages/BulkSurveys";
 import APIIntegration from "./pages/APIIntegration";
+import APITesting from "./pages/APITesting";
 import TradingBot from "./pages/TradingBot";
 import AlertsService from "./pages/AlertsService";
 
@@ -31,9 +32,9 @@ const App = () => (
           <Route path="/marketing-leads" element={<MarketingLeads />} />
           <Route path="/bulk-surveys" element={<BulkSurveys />} />
           <Route path="/api-integration" element={<APIIntegration />} />
+          <Route path="/api-testing" element={<APITesting />} />
           <Route path="/trading-bot" element={<TradingBot />} />
           <Route path="/alerts-service" element={<AlertsService />} />
-          {/* Add routes for other pages */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
