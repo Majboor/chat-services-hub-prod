@@ -1,4 +1,3 @@
-
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
@@ -70,13 +69,11 @@ export const apiService = {
 
   // Campaigns
   createCampaign: async (formData: FormData) => {
-    // Remove headers to let browser set correct multipart/form-data boundary
     const response = await fetch(`${BASE_URL}/campaign/create`, {
       method: 'POST',
       body: formData,
     });
     const data = await response.json();
-    // Return the campaign name as the ID since that's what the server expects
     return {
       campaign_id: formData.get('name') as string,
       ...data
@@ -128,7 +125,7 @@ export const apiService = {
   },
 
   getNextNumberForReview: async (campaignId: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/next-number`);
+    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/review-next`);
     return await response.json();
   },
 
