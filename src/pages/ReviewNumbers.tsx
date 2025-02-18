@@ -26,13 +26,18 @@ interface NumberDetails {
   status: string;
 }
 
+// Helper function to sanitize campaign names
+const sanitizeCampaignName = (name: string) => {
+  return name.replace(/[^a-zA-Z0-9-_]/g, '_');
+};
+
 export default function ReviewNumbers() {
   const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string>("");
   const [currentNumber, setCurrentNumber] = useState<NumberDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [userCredits, setUserCredits] = useState(100); // TODO: Get from API
+  const [userCredits, setUserCredits] = useState(100);
 
   useEffect(() => {
     loadCampaigns();
@@ -41,10 +46,10 @@ export default function ReviewNumbers() {
   const loadCampaigns = async () => {
     try {
       const response = await apiService.listAllCampaigns();
-      // Ensure campaign names follow the expected pattern
+      // Sanitize campaign names when receiving them
       const validCampaigns = response.map((campaign: Campaign) => ({
         ...campaign,
-        name: campaign.name.replace(/[^a-zA-Z0-9-_]/g, '_') // Sanitize campaign names
+        name: sanitizeCampaignName(campaign.name)
       }));
       setCampaigns(validCampaigns);
     } catch (error: any) {
@@ -61,7 +66,10 @@ export default function ReviewNumbers() {
     
     setIsLoading(true);
     try {
-      const number = await apiService.getNextNumberForReview(selectedCampaign);
+      // Sanitize campaign name when sending it
+      const sanitizedCampaign = sanitizeCampaignName(selectedCampaign);
+      console.log("Requesting next number for campaign:", sanitizedCampaign); // Debug log
+      const number = await apiService.getNextNumberForReview(sanitizedCampaign);
       setCurrentNumber(number);
     } catch (error: any) {
       toast({
@@ -79,19 +87,19 @@ export default function ReviewNumbers() {
 
     setIsLoading(true);
     try {
+      // Sanitize campaign name when sending it
+      const sanitizedCampaign = sanitizeCampaignName(selectedCampaign);
       await apiService.updateReview({
-        campaign_id: selectedCampaign,
+        campaign_id: sanitizedCampaign,
         number: currentNumber.number,
         approved,
         notes: approved ? "Approved" : "Rejected",
       });
 
-      // Update credits
       if (approved) {
         setUserCredits(prev => prev + 0.5);
       }
 
-      // Load next number
       await loadNextNumber();
     } catch (error: any) {
       toast({
@@ -102,6 +110,13 @@ export default function ReviewNumbers() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCampaignSelect = (campaignName: string) => {
+    // Sanitize campaign name when selecting it
+    const sanitizedName = sanitizeCampaignName(campaignName);
+    setSelectedCampaign(sanitizedName);
+    setCurrentNumber(null);
   };
 
   return (
@@ -126,10 +141,7 @@ export default function ReviewNumbers() {
                 <select
                   className="w-full p-2 border rounded-md"
                   value={selectedCampaign}
-                  onChange={(e) => {
-                    setSelectedCampaign(e.target.value);
-                    setCurrentNumber(null);
-                  }}
+                  onChange={(e) => handleCampaignSelect(e.target.value)}
                 >
                   <option value="">Select a campaign</option>
                   {campaigns.map((campaign) => (
