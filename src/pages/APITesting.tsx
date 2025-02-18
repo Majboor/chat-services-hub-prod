@@ -125,6 +125,11 @@ const reviewDemoData = {
   notes: "Good response, follow up recommended"
 };
 
+const formatNumber = (number: string): string => {
+  // Remove any '+' prefix and trim whitespace
+  return number.replace(/^\+/, '').trim();
+};
+
 const EndpointCard = ({ 
   title, 
   endpoint, 
@@ -259,6 +264,13 @@ const FlowSection = () => {
 
   const makeApiCall = async (endpoint: string, method: string, payload?: any) => {
     try {
+      // If payload contains numbers, format them
+      if (payload && typeof payload === 'object') {
+        if (payload.number) {
+          payload.number = formatNumber(payload.number);
+        }
+      }
+
       const options: RequestInit = {
         method,
         headers: {
@@ -297,15 +309,20 @@ const FlowSection = () => {
   const selectCampaign = async (campaign: CampaignDetails) => {
     setLoading(true);
     try {
+      // First get the list of numbers
       const numbersResponse = await makeApiCall(
         `/numbers/list?list_name=${encodeURIComponent(campaign.number_list)}&username=${encodeURIComponent(campaign.owner)}`, 
         'GET'
       );
       
+      // Get campaign status - will now handle 404 gracefully
       const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
       
-      const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => d.number));
-      const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
+      // Format numbers and filter processed ones
+      const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => formatNumber(d.number)));
+      const availableNumbers = numbersResponse.filter((n: NumberStatus) => 
+        !processedNumbers.has(formatNumber(n.number))
+      );
       
       setNumbers(availableNumbers);
       setSelectedCampaign(campaign);
@@ -422,7 +439,7 @@ const FlowSection = () => {
     try {
       await makeApiCall('/campaign/process-number', 'POST', {
         campaign_id: selectedCampaign?.name,
-        number,
+        number: formatNumber(number),
         status,
         notes: status === 'sent' ? 'Message delivered successfully' : 'Message delivery failed',
         feedback: status === 'sent' ? {
@@ -435,13 +452,19 @@ const FlowSection = () => {
         }
       });
 
-      setNumbers(numbers.filter(n => n.number !== number));
+      setNumbers(numbers.filter(n => formatNumber(n.number) !== formatNumber(number)));
       
       if (numbers.length <= 1) {
         setError("Campaign completed! All numbers have been processed.");
         setSelectedCampaign(null);
         setNumbers([]);
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update number status",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
