@@ -131,21 +131,67 @@ const formatNumber = (number: string | number | undefined): string => {
   return stringNumber.replace(/^\+/, '').replace(/\D/g, '');
 };
 
-const validateCampaignPayload = (payload: any) => {
-  const requiredFields = ['name', 'username', 'number_list', 'content'];
-  for (const field of requiredFields) {
-    if (!payload[field]) {
-      throw new Error(`Missing required field: ${field}`);
-    }
-  }
-};
+const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
+  let url = `${BASE_URL}${endpoint}`;
+  
+  try {
+    const options: RequestInit = {
+      method,
+      headers: payload instanceof FormData 
+        ? { 'Accept': 'application/json' }
+        : {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+      body: method !== "GET" 
+        ? (payload instanceof FormData 
+          ? payload 
+          : payload 
+            ? JSON.stringify(payload) 
+            : undefined)
+        : undefined,
+      mode: 'cors',
+      credentials: 'include'
+    };
 
-const validateNumberPayload = (payload: any) => {
-  const requiredFields = ['list_name', 'username', 'number', 'name'];
-  for (const field of requiredFields) {
-    if (!payload[field]) {
-      throw new Error(`Missing required field: ${field}`);
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
+    
+    if (response.status === 404) {
+      if (endpoint.includes('/campaign/process-number')) {
+        const errorData = typeof data === 'string' ? JSON.parse(data) : data;
+        if (errorData.error?.includes('Number not found')) {
+          throw new Error("Number not found in campaign. Please check the number and try again.");
+        }
+      }
+      
+      if (endpoint.includes('/campaign/status/')) {
+        if (data.error?.includes('No execution data')) {
+          return {
+            status: 200,
+            data: { 
+              details: [],
+              message: "Campaign has not been executed yet. Please execute the campaign first."
+            }
+          };
+        }
+      }
     }
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
+    }
+
+    return {
+      status: response.status,
+      data
+    };
+  } catch (error) {
+    console.error("API Error:", error);
+    if (error instanceof TypeError && error.message === 'Load failed') {
+      throw new Error("Network error. Please check your connection and try again.");
+    }
+    throw error;
   }
 };
 
@@ -170,14 +216,6 @@ const EndpointCard = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const validatePayload = (payload: any) => {
-    if (endpoint.includes('/campaign/create')) {
-      validateCampaignPayload(payload);
-    } else if (endpoint.includes('/numbers/add')) {
-      validateNumberPayload(payload);
-    }
-  };
-
   const handleTest = async (useDemo: boolean) => {
     setLoading(true);
     try {
@@ -188,18 +226,6 @@ const EndpointCard = ({
         const formData = new FormData();
         const data = useDemo ? demoPayload : JSON.parse(customPayload);
         
-        try {
-          validatePayload(data);
-        } catch (error) {
-          toast({
-            title: "Validation Error",
-            description: (error as Error).message,
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
         Object.entries(data).forEach(([key, value]) => {
           if (key === 'number') {
             formData.append(key, formatNumber(value as string));
@@ -216,99 +242,55 @@ const EndpointCard = ({
         payload = formData;
       } else {
         payload = useDemo ? demoPayload : JSON.parse(customPayload);
-        
-        try {
-          validatePayload(payload);
-        } catch (error) {
-          toast({
-            title: "Validation Error",
-            description: (error as Error).message,
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
         if (payload.number) {
           payload.number = formatNumber(payload.number);
         }
       }
-      
-      const result = await onTest(payload);
-      
-      if (endpoint.includes('/campaign/process-number')) {
-        if (result.status === 404) {
-          const errorData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
-          if (errorData.error?.includes('Number not found')) {
-            toast({
-              title: "Error",
-              description: "Number not found in campaign. Please check the number and try again.",
-              variant: "destructive",
-            });
-            setLoading(false);
-            return;
-          }
+
+      try {
+        const result = await onTest(payload);
+        setResponse(result);
+        
+        if (endpoint.includes('/campaign/create') || 
+            endpoint.includes('/campaign/execute')) {
+          toast({
+            title: "Success",
+            description: `Operation completed successfully`,
+          });
         }
-      }
-      
-      if (endpoint.includes('campaign/status/')) {
-        if (result.status === 404) {
-          const errorData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
-          if (errorData.error?.includes('No execution data')) {
-            setResponse({
-              status: 200,
-              data: { 
-                details: [],
-                message: "Campaign has not been executed yet. Please execute the campaign first." 
-              }
-            });
-            toast({
-              title: "Info",
-              description: "Campaign has not been executed yet. Please execute the campaign first.",
-            });
-            setLoading(false);
-            return;
-          }
+      } catch (error) {
+        const errorMessage = (error as Error).message;
+        
+        if (errorMessage.includes('Network error')) {
+          toast({
+            title: "Connection Error",
+            description: "Unable to connect to the server. Please try again.",
+            variant: "destructive",
+          });
+        } else if (errorMessage.includes('Number not found')) {
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: `Operation failed: ${errorMessage}`,
+            variant: "destructive",
+          });
         }
+        
         setResponse({
-          status: result.status || 200,
-          data: result.data || { details: [] }
-        });
-        return;
-      }
-      
-      setResponse(result);
-      
-      if (endpoint.includes('/campaign/create') || 
-          endpoint.includes('/campaign/execute') ||
-          endpoint.includes('/campaign/process-number')) {
-        toast({
-          title: "Success",
-          description: `Operation completed successfully`,
+          status: 500,
+          data: { error: errorMessage }
         });
       }
     } catch (error) {
-      console.error("Error in API call:", error);
-      
-      if (endpoint.includes('campaign/status/')) {
-        setResponse({
-          status: 200,
-          data: { 
-            details: [],
-            message: "Unable to fetch campaign status. Please try again."
-          }
-        });
-        return;
-      }
-      
-      setResponse({
-        status: 500,
-        data: { error: "Error in API call: " + (error as Error).message }
-      });
-      
+      console.error("Form Error:", error);
       toast({
         title: "Error",
-        description: (error as Error).message,
+        description: "Invalid payload format. Please check your input.",
         variant: "destructive",
       });
     } finally {
@@ -761,52 +743,9 @@ const FlowSection = () => {
 export default function APITesting() {
   const { toast } = useToast();
   
-  const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
-    let url = `${BASE_URL}${endpoint}`;
-    
-    if (method === "GET" && payload) {
-      const params = new URLSearchParams();
-      Object.entries(payload).forEach(([key, value]) => {
-        params.append(key, value as string);
-      });
-      url = `${url}?${params.toString()}`;
-    }
-    
+  const makeAPICall = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
     try {
-      const options: RequestInit = {
-        method,
-        headers: payload instanceof FormData 
-          ? {
-              'Accept': 'application/json',
-            }
-          : method !== "GET" 
-            ? {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              }
-            : {
-                'Accept': 'application/json',
-              },
-        body: method !== "GET" 
-          ? (payload instanceof FormData 
-            ? payload 
-            : payload 
-              ? JSON.stringify(payload) 
-              : undefined)
-          : undefined,
-      };
-
-      const response = await fetch(url, options);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
-      }
-
-      return {
-        status: response.status,
-        data
-      };
+      return await makeRequest(endpoint, method, payload);
     } catch (error) {
       console.error("API call failed:", error);
       toast({
@@ -844,7 +783,7 @@ export default function APITesting() {
               endpoint="/auth/register"
               method="POST"
               demoPayload={demoData.register}
-              onTest={(payload) => makeRequest("/auth/register", "POST", payload)}
+              onTest={(payload) => makeAPICall("/auth/register", "POST", payload)}
             />
           </TabsContent>
 
@@ -859,7 +798,7 @@ export default function APITesting() {
               }}
               onTest={(payload) => {
                 const params = new URLSearchParams(payload);
-                return makeRequest(`/numbers/list?${params.toString()}`, "GET");
+                return makeAPICall(`/numbers/list?${params.toString()}`, "GET");
               }}
             />
             <EndpointCard
@@ -867,14 +806,14 @@ export default function APITesting() {
               endpoint="/numbers/create-list"
               method="POST"
               demoPayload={demoData.createList}
-              onTest={(payload) => makeRequest("/numbers/create-list", "POST", payload)}
+              onTest={(payload) => makeAPICall("/numbers/create-list", "POST", payload)}
             />
             <EndpointCard
               title="Add Contact"
               endpoint="/numbers/add"
               method="POST"
               demoPayload={demoData.addContact}
-              onTest={(payload) => makeRequest("/numbers/add", "POST", payload)}
+              onTest={(payload) => makeAPICall("/numbers/add", "POST", payload)}
             />
           </TabsContent>
 
@@ -884,20 +823,20 @@ export default function APITesting() {
               endpoint="/campaign/create"
               method="POST"
               demoPayload={demoPayloadForCampaign}
-              onTest={(payload) => makeRequest("/campaign/create", "POST", payload)}
+              onTest={(payload) => makeAPICall("/campaign/create", "POST", payload)}
               isMultipart={true}
             />
             <EndpointCard
               title="List All Campaigns"
               endpoint="/campaign/list-all"
               method="GET"
-              onTest={() => makeRequest("/campaign/list-all", "GET")}
+              onTest={() => makeAPICall("/campaign/list-all", "GET")}
             />
             <EndpointCard
               title="List Pending Campaigns"
               endpoint="/campaign/list-pending"
               method="GET"
-              onTest={() => makeRequest("/campaign/list-pending", "GET")}
+              onTest={() => makeAPICall("/campaign/list-pending", "GET")}
             />
           </TabsContent>
 
@@ -907,20 +846,20 @@ export default function APITesting() {
               endpoint="/campaign/execute/{campaign_name}"
               method="POST"
               demoPayload={executionDemoData}
-              onTest={(payload) => makeRequest("/campaign/execute/Demo%20Campaign", "POST", payload)}
+              onTest={(payload) => makeAPICall("/campaign/execute/Demo%20Campaign", "POST", payload)}
             />
             <EndpointCard
               title="Get Next Number"
               endpoint="/campaign/{campaign_name}/next-number"
               method="GET"
-              onTest={() => makeRequest("/campaign/Demo%20Campaign/next-number", "GET")}
+              onTest={() => makeAPICall("/campaign/Demo%20Campaign/next-number", "GET")}
             />
             <EndpointCard
               title="Process Number"
               endpoint="/campaign/process-number"
               method="POST"
               demoPayload={numberStatusDemoData}
-              onTest={(payload) => makeRequest("/campaign/process-number", "POST", payload)}
+              onTest={(payload) => makeAPICall("/campaign/process-number", "POST", payload)}
             />
           </TabsContent>
 
@@ -929,14 +868,14 @@ export default function APITesting() {
               title="Get Next Number for Review"
               endpoint="/campaign/{campaign_name}/review-next"
               method="GET"
-              onTest={() => makeRequest("/campaign/Demo%20Campaign/review-next", "GET")}
+              onTest={() => makeAPICall("/campaign/Demo%20Campaign/review-next", "GET")}
             />
             <EndpointCard
               title="Update Review"
               endpoint="/campaign/update-review"
               method="POST"
               demoPayload={reviewDemoData}
-              onTest={(payload) => makeRequest("/campaign/update-review", "POST", payload)}
+              onTest={(payload) => makeAPICall("/campaign/update-review", "POST", payload)}
             />
           </TabsContent>
 
