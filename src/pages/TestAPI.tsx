@@ -1,8 +1,10 @@
+
 import { useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
@@ -15,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { apiService } from "@/services/apiService";
 import { useToast } from "@/hooks/use-toast";
+import { APIDocumentation } from "@/components/api-docs/APIDocumentation";
 
 export default function TestAPI() {
   const { toast } = useToast();
@@ -210,73 +213,86 @@ export default function TestAPI() {
       <div className="container mx-auto py-6 px-4">
         <h1 className="text-3xl font-bold mb-6">API Testing Interface</h1>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Configuration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(runTest)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormItem>
-                    <FormLabel>Campaign Media (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="file" 
-                        ref={fileInputRef}
-                        accept="image/*"
-                      />
-                    </FormControl>
-                  </FormItem>
-                  <Button type="submit" disabled={isRunning}>
-                    {isRunning ? "Running Test..." : "Run Test"}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="test" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="test">Test Runner</TabsTrigger>
+            <TabsTrigger value="docs">API Documentation</TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Logs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] overflow-y-auto bg-secondary p-4 rounded-md">
-                {logs.map((log, index) => (
-                  <div key={index} className="text-sm mb-2">
-                    {log}
+          <TabsContent value="test" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Test Configuration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(runTest)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormItem>
+                        <FormLabel>Campaign Media (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="file" 
+                            ref={fileInputRef}
+                            accept="image/*"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <Button type="submit" disabled={isRunning}>
+                        {isRunning ? "Running Test..." : "Run Test"}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Test Logs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px] overflow-y-auto bg-secondary p-4 rounded-md">
+                    {logs.map((log, index) => (
+                      <div key={index} className="text-sm mb-2">
+                        {log}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="docs">
+            <APIDocumentation />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
