@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +16,9 @@ import APITesting from "./pages/APITesting";
 import TradingBot from "./pages/TradingBot";
 import AlertsService from "./pages/AlertsService";
 import TestAPI from "./pages/TestAPI";
+import CreateList from "./pages/CreateList";
+import CreateCampaign from "./pages/CreateCampaign";
+import ReviewNumbers from "./pages/ReviewNumbers";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +42,9 @@ function App() {
               <Route path="/alerts-service" element={<AlertsService />} />
               <Route path="/api-testing" element={<APITesting />} />
               <Route path="/test-api" element={<TestAPI />} />
+              <Route path="/create-list" element={<CreateList />} />
+              <Route path="/create-campaign" element={<CreateCampaign />} />
+              <Route path="/review-numbers" element={<ReviewNumbers />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
