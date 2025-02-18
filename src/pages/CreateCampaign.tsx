@@ -47,16 +47,17 @@ export default function CreateCampaign() {
     const fetchLists = async () => {
       try {
         console.log("Fetching number lists for user:", username);
-        const response = await apiService.getNumberLists();
+        const response = await apiService.getNumberLists(username); // Pass username parameter
         console.log("Fetched lists:", response);
         setNumberLists(response.lists || []);
       } catch (error) {
         console.error("Error fetching number lists:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch number lists",
+          description: "Failed to fetch number lists. Please try creating a list first.",
           variant: "destructive",
         });
+        navigate("/create-list");
       }
     };
     fetchLists();

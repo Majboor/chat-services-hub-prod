@@ -207,10 +207,13 @@ export const apiService = {
     return responseData;
   },
 
-  getNumberLists: async () => {
-    const response = await fetch(`${BASE_URL}/numbers/lists`);
+  getNumberLists: async (username: string) => {
+    const response = await fetch(`${BASE_URL}/numbers/get-lists/${username}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch lists: ${response.statusText}`);
+    }
     const data = await response.json();
-    console.log("Available number lists:", data); // Debug log
+    console.log("Available number lists for user:", username, data);
     return data;
   },
 };
