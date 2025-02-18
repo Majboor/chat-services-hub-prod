@@ -129,9 +129,12 @@ export const apiService = {
     console.log("Getting status for campaign:", campaignId);
     try {
       const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
-      const data = await response.json();
-      console.log("Campaign status response:", data);
-      return data;
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { message: text };
+      }
     } catch (error) {
       console.error("Error getting campaign status:", error);
       throw error;
