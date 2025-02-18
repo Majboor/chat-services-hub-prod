@@ -44,12 +44,26 @@ export interface CampaignStatus {
 export const apiService = {
   // Auth
   registerUser: async (username: string, password: string, role: string) => {
-    const response = await fetch(`${BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, role }),
-    });
-    return await response.json();
+    try {
+      const response = await fetch(`${BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      return data;
+    } catch (error: any) {
+      if (error.message === "Username already exists") {
+        throw new Error("This username is already taken. Please try a different one.");
+      }
+      throw error;
+    }
   },
 
   // Number Lists

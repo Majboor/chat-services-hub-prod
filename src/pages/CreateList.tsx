@@ -65,11 +65,14 @@ export default function CreateList() {
         });
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
-        title: "Error",
+        title: "Authentication Error",
         description: error.message || "Failed to register user",
         variant: "destructive",
       });
+
+      setPassword("");
     }
   };
 
