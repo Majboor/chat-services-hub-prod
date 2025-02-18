@@ -84,7 +84,7 @@ const EndpointCard = ({
   endpoint: string;
   method: string;
   demoPayload?: any;
-  onTest: (payload: any) => void;
+  onTest: (payload: any) => Promise<ApiResponse>;  // Updated type to specify Promise return
 }) => {
   const [customPayload, setCustomPayload] = useState(
     demoPayload ? JSON.stringify(demoPayload, null, 2) : ""
@@ -97,7 +97,7 @@ const EndpointCard = ({
       setLoading(true);
       const payload = useDemoData ? demoPayload : JSON.parse(customPayload);
       const result = await onTest(payload);
-      setResponse(result);
+      setResponse(result);  // Now result is properly typed as ApiResponse
       toast.success("API call completed");
     } catch (error) {
       toast.error("Error in API call: " + (error as Error).message);
@@ -161,7 +161,7 @@ const EndpointCard = ({
 };
 
 export default function APITesting() {
-  const makeRequest = async (endpoint: string, method: string, payload?: any) => {
+  const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
     const url = `${BASE_URL}${endpoint}`;
     
     const options: RequestInit = {
