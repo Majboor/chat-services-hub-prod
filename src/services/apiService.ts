@@ -208,12 +208,19 @@ export const apiService = {
   },
 
   getNumberLists: async (username: string) => {
-    const response = await fetch(`${BASE_URL}/numbers/list?username=${username}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch lists: ${response.statusText}`);
+    try {
+      const response = await fetch(`${BASE_URL}/numbers/list?username=${username}`);
+      const data = await response.json();
+      
+      if (data.message === "No numbers found") {
+        return { lists: [] };
+      }
+      
+      console.log("Available number lists for user:", username, data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching number lists:", error);
+      throw new Error(`Failed to fetch lists: ${error}`);
     }
-    const data = await response.json();
-    console.log("Available number lists for user:", username, data);
-    return data;
   },
 };
