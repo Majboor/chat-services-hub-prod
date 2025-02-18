@@ -84,7 +84,7 @@ const EndpointCard = ({
   endpoint: string;
   method: string;
   demoPayload?: any;
-  onTest: (payload: any) => Promise<ApiResponse>;  // Updated type to specify Promise return
+  onTest: (payload: any) => Promise<ApiResponse>;
 }) => {
   const [customPayload, setCustomPayload] = useState(
     demoPayload ? JSON.stringify(demoPayload, null, 2) : ""
@@ -95,9 +95,9 @@ const EndpointCard = ({
   const handleTest = async (useDemoData: boolean) => {
     try {
       setLoading(true);
-      const payload = useDemoData ? demoPayload : JSON.parse(customPayload);
+      const payload = method !== "GET" && !useDemoData ? JSON.parse(customPayload) : undefined;
       const result = await onTest(payload);
-      setResponse(result);  // Now result is properly typed as ApiResponse
+      setResponse(result);
       toast.success("API call completed");
     } catch (error) {
       toast.error("Error in API call: " + (error as Error).message);
@@ -122,21 +122,23 @@ const EndpointCard = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <Textarea 
-            value={customPayload}
-            onChange={(e) => setCustomPayload(e.target.value)}
-            placeholder="Enter request payload (JSON)"
-            className="font-mono text-sm h-[200px]"
-          />
+          {method !== "GET" && (
+            <Textarea 
+              value={customPayload}
+              onChange={(e) => setCustomPayload(e.target.value)}
+              placeholder="Enter request payload (JSON)"
+              className="font-mono text-sm h-[200px]"
+            />
+          )}
           <div className="flex gap-2">
             <Button 
               onClick={() => handleTest(false)} 
               disabled={loading}
               variant="default"
             >
-              Test with Custom Data
+              {method === "GET" ? "Send Request" : "Test with Custom Data"}
             </Button>
-            {demoPayload && (
+            {demoPayload && method !== "GET" && (
               <Button 
                 onClick={() => handleTest(true)} 
                 disabled={loading}
@@ -167,7 +169,7 @@ export default function APITesting() {
     const options: RequestInit = {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        ...(method !== "GET" ? { 'Content-Type': 'application/json' } : {}),
       },
       body: payload ? JSON.stringify(payload) : undefined,
     };
