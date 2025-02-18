@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
@@ -245,9 +246,9 @@ const EndpointCard = ({
 };
 
 const FlowSection = () => {
+  const { toast } = useToast();
   const [demoData] = useState(getDemoData());
   const [marketerAccount, setMarketerAccount] = useState<{ username: string } | null>(null);
-  const [crowdsourceAccount, setCrowdsourceAccount] = useState<CrowdsourceAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null);
   const [numbers, setNumbers] = useState<NumberStatus[]>([]);
@@ -257,21 +258,31 @@ const FlowSection = () => {
 
   const makeApiCall = async (endpoint: string, method: string, payload?: any) => {
     try {
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
+      const options: RequestInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: payload ? JSON.stringify(payload) : undefined,
-      });
+      };
+
+      const response = await fetch(`${BASE_URL}${endpoint}`, options);
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'API call failed');
+        throw new Error(data.error || data.message || 'API call failed');
       }
       return data;
     } catch (error) {
-      setError((error as Error).message);
+      console.error("API Error:", error);
+      const errorMessage = (error as Error).message;
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       throw error;
     }
   };
@@ -279,12 +290,37 @@ const FlowSection = () => {
   const createMarketerAccount = async () => {
     setLoading(true);
     try {
-      const response = await makeApiCall('/auth/register', 'POST', demoData.register);
+      const response = await fetch(`${BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(demoData.register),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Registration failed');
+      }
+
       setMarketerAccount({ username: demoData.register.username });
       setCurrentStep(2);
       setError(null);
+      
+      toast({
+        title: "Success",
+        description: "Marketer account created successfully",
+      });
     } catch (error) {
-      setError((error as Error).message);
+      const errorMessage = (error as Error).message;
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -355,12 +391,24 @@ const FlowSection = () => {
         'GET'
       );
       
-      const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
-      const processedNumbers = new Set(statusResponse.details.map((d: any) => d.number));
+      try {
+        const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
+        const processedNumbers = new Set(statusResponse.details?.map((d: any) => d.number) || []);
+        const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
+        setNumbers(availableNumbers);
+      } catch (statusError) {
+        console.log("Campaign status not found, using all numbers");
+        setNumbers(numbersResponse);
+      }
       
-      const availableNumbers = numbersResponse.filter((n: NumberStatus) => !processedNumbers.has(n.number));
-      setNumbers(availableNumbers);
       setSelectedCampaign(campaign);
+      setError(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load campaign details",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -512,6 +560,8 @@ const FlowSection = () => {
 };
 
 export default function APITesting() {
+  const { toast } = useToast();
+  
   const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
     let url = `${BASE_URL}${endpoint}`;
     
@@ -523,31 +573,48 @@ export default function APITesting() {
       url = `${url}?${params.toString()}`;
     }
     
-    const options: RequestInit = {
-      method,
-      headers: payload instanceof FormData 
-        ? {} 
-        : method !== "GET" 
-          ? { 'Content-Type': 'application/json' }
-          : {},
-      body: method !== "GET" 
-        ? (payload instanceof FormData 
-          ? payload 
-          : payload 
-            ? JSON.stringify(payload) 
-            : undefined)
-        : undefined,
-    };
-
     try {
+      const options: RequestInit = {
+        method,
+        headers: payload instanceof FormData 
+          ? {
+              'Accept': 'application/json',
+            }
+          : method !== "GET" 
+            ? {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              }
+            : {
+                'Accept': 'application/json',
+              },
+        body: method !== "GET" 
+          ? (payload instanceof FormData 
+            ? payload 
+            : payload 
+              ? JSON.stringify(payload) 
+              : undefined)
+          : undefined,
+      };
+
       const response = await fetch(url, options);
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
+      }
+
       return {
         status: response.status,
         data
       };
     } catch (error) {
       console.error("API call failed:", error);
+      toast({
+        title: "Error",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
       throw error;
     }
   };
