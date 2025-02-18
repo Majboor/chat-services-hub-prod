@@ -78,7 +78,8 @@ export default function TestAPI() {
       // Create campaign with media file
       addLog("➡️ Creating campaign...");
       const formData = new FormData();
-      formData.append("name", data.campaignName);
+      const campaignName = data.campaignName; // Store campaign name for later use
+      formData.append("name", campaignName);
       formData.append("username", data.username);
       formData.append("number_list", data.listName);
       formData.append("content", "Test campaign message");
@@ -92,17 +93,17 @@ export default function TestAPI() {
 
       // Execute campaign
       addLog("➡️ Starting campaign execution...");
-      await apiService.executeCampaign(data.campaignName, 10, 0);
+      await apiService.executeCampaign(campaignName, 10, 0);
       addLog("✅ Campaign execution started");
 
       // Process numbers
       addLog("➡️ Processing campaign numbers...");
       
       // Get and process first number
-      const firstNumber = await apiService.getNextNumber(data.campaignName);
+      const firstNumber = await apiService.getNextNumber(campaignName);
       if (firstNumber.number) {
         await apiService.processNumber({
-          campaign_id: data.campaignName,
+          campaign_id: campaignName,
           number: firstNumber.number,
           status: "sent",
           notes: "Interested in product",
@@ -116,10 +117,10 @@ export default function TestAPI() {
       }
 
       // Get and process second number
-      const secondNumber = await apiService.getNextNumber(data.campaignName);
+      const secondNumber = await apiService.getNextNumber(campaignName);
       if (secondNumber.number) {
         await apiService.processNumber({
-          campaign_id: data.campaignName,
+          campaign_id: campaignName,
           number: secondNumber.number,
           status: "failed",
           notes: "Number not reachable",
@@ -135,10 +136,10 @@ export default function TestAPI() {
       addLog("➡️ Starting review flow...");
       
       // Get first number for review
-      const reviewNumber1 = await apiService.getNextNumberForReview(data.campaignName);
+      const reviewNumber1 = await apiService.getNextNumberForReview(campaignName);
       if (reviewNumber1.number) {
         await apiService.updateReview({
-          campaign_id: data.campaignName,
+          campaign_id: campaignName,
           number: reviewNumber1.number,
           approved: true,
           notes: "Good response, follow up needed"
@@ -147,10 +148,10 @@ export default function TestAPI() {
       }
 
       // Get second number for review
-      const reviewNumber2 = await apiService.getNextNumberForReview(data.campaignName);
+      const reviewNumber2 = await apiService.getNextNumberForReview(campaignName);
       if (reviewNumber2.number) {
         await apiService.updateReview({
-          campaign_id: data.campaignName,
+          campaign_id: campaignName,
           number: reviewNumber2.number,
           approved: false,
           notes: "Invalid number, remove from list"
@@ -159,7 +160,7 @@ export default function TestAPI() {
       }
 
       // Check final campaign status
-      const campaignStatus = await apiService.getCampaignStatus(data.campaignName);
+      const campaignStatus = await apiService.getCampaignStatus(campaignName);
       addLog(`✅ Final campaign status: ${JSON.stringify(campaignStatus)}`);
 
       // List pending campaigns
