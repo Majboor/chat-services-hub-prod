@@ -248,7 +248,14 @@ const FlowSection = () => {
         body: payload ? JSON.stringify(payload) : undefined,
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'API call failed');
+      
+      if (!response.ok && data.message) {
+        if (data.message.includes('already exists')) {
+          return data;
+        }
+        throw new Error(data.message);
+      }
+      if (!response.ok) throw new Error('API call failed');
       return data;
     } catch (error) {
       setError((error as Error).message);
@@ -259,13 +266,16 @@ const FlowSection = () => {
   const createMarketerAccount = async () => {
     setLoading(true);
     try {
-      const response = await makeApiCall('/auth/register', 'POST', demoData.register);
+      await makeApiCall('/auth/register', 'POST', demoData.register);
       setMarketerAccount({ username: demoData.register.username });
       setCurrentStep(2);
     } catch (error) {
       if ((error as Error).message.includes('already exists')) {
         setMarketerAccount({ username: demoData.register.username });
         setCurrentStep(2);
+        setError(null);
+      } else {
+        setError((error as Error).message);
       }
     } finally {
       setLoading(false);
@@ -275,7 +285,7 @@ const FlowSection = () => {
   const createCrowdsourceAccount = async () => {
     setLoading(true);
     try {
-      const response = await makeApiCall('/auth/register', 'POST', crowdsourceDemo.register);
+      await makeApiCall('/auth/register', 'POST', crowdsourceDemo.register);
       const creditsResponse = await makeApiCall(`/credits/check/${crowdsourceDemo.register.username}`, 'GET');
       setCrowdsourceAccount({ 
         username: crowdsourceDemo.register.username,
@@ -290,6 +300,9 @@ const FlowSection = () => {
           credits: creditsResponse.credits || 0
         });
         setCurrentStep(3);
+        setError(null);
+      } else {
+        setError((error as Error).message);
       }
     } finally {
       setLoading(false);
@@ -394,7 +407,11 @@ const FlowSection = () => {
         <CardContent>
           <div className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-md mb-4">
+              <div className={`p-4 rounded-md mb-4 ${
+                error.includes('already exists') 
+                  ? 'bg-yellow-50 text-yellow-600' 
+                  : 'bg-red-50 text-red-600'
+              }`}>
                 {error}
               </div>
             )}
