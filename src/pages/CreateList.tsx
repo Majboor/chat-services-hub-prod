@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
@@ -40,20 +39,38 @@ export default function CreateList() {
     const file = acceptedFiles[0];
     if (file) {
       Papa.parse(file, {
+        skipEmptyLines: true,
+        header: false,
         complete: (results) => {
-          if (results.data && results.data.length > 0) {
-            const firstRow = results.data[0] as string[];
-            if (Array.isArray(firstRow)) {
-              setHeaders(firstRow);
-              // Show only first 5 rows for preview, starting from second row
-              setCsvData(results.data.slice(1, 6) as CSVRow[]);
-            }
+          console.log("CSV Parse Results:", results);
+          if (results.data && Array.isArray(results.data) && results.data.length > 0) {
+            const headers = results.data[0] as string[];
+            const rows = results.data.slice(1).map(row => {
+              const obj: { [key: string]: string } = {};
+              (row as string[]).forEach((cell, index) => {
+                obj[headers[index]] = cell;
+              });
+              return obj;
+            });
+            
+            console.log("Headers:", headers);
+            console.log("First 5 rows:", rows.slice(0, 5));
+            
+            setHeaders(headers);
+            setCsvData(rows.slice(0, 5) as CSVRow[]);
           }
         },
-        header: true,
+        error: (error) => {
+          console.error("CSV Parse Error:", error);
+          toast({
+            title: "Error",
+            description: "Failed to parse CSV file. Please check the file format.",
+            variant: "destructive",
+          });
+        }
       });
     }
-  }, []);
+  }, [toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -85,14 +102,12 @@ export default function CreateList() {
 
     setIsProcessing(true);
     try {
-      // Create the list first
-      await apiService.createNumberList(listName, "marketer1"); // TODO: Replace with actual username
+      await apiService.createNumberList(listName, "marketer1");
 
-      // Process each row and add to the list
       for (const row of csvData) {
         const numberData = {
           list_name: listName,
-          username: "marketer1", // TODO: Replace with actual username
+          username: "marketer1",
           number: row[numberColumnIndex],
           name: row[selectedHeaders.name] || "",
           interests: row[selectedHeaders.interests] || "",
@@ -119,7 +134,6 @@ export default function CreateList() {
         description: "List created successfully",
       });
 
-      // Navigate to campaign creation
       navigate("/create-campaign", { state: { listName } });
     } catch (error: any) {
       toast({
