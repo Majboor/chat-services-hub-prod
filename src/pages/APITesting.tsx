@@ -126,7 +126,6 @@ const reviewDemoData = {
 };
 
 const formatNumber = (number: string): string => {
-  // Remove any '+' prefix and trim whitespace
   return number.replace(/^\+/, '').trim();
 };
 
@@ -264,7 +263,6 @@ const FlowSection = () => {
 
   const makeApiCall = async (endpoint: string, method: string, payload?: any) => {
     try {
-      // If payload contains numbers, format them
       if (payload && typeof payload === 'object') {
         if (payload.number) {
           payload.number = formatNumber(payload.number);
@@ -281,19 +279,37 @@ const FlowSection = () => {
       };
 
       const response = await fetch(`${BASE_URL}${endpoint}`, options);
-      const data = await response.json();
+      let data;
+      
+      try {
+        data = await response.json();
+      } catch (e) {
+        data = { error: 'Invalid response format' };
+      }
       
       if (!response.ok) {
         if (response.status === 404 && endpoint.includes('/campaign/status/')) {
+          console.log('No campaign status found, treating as new campaign');
           return { details: [] };
         }
-        throw new Error(data.error || data.message || 'API call failed');
+        
+        if (endpoint === '/auth/register') {
+          console.log('Registration failed:', data);
+          if (data.error?.includes('already exists')) {
+            return { username: payload.username };
+          }
+        }
+        
+        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
       }
+      
       return data;
     } catch (error) {
       if (endpoint.includes('/campaign/status/')) {
+        console.log('Error fetching campaign status, treating as new campaign');
         return { details: [] };
       }
+      
       console.error("API Error:", error);
       const errorMessage = (error as Error).message;
       setError(errorMessage);
@@ -309,16 +325,19 @@ const FlowSection = () => {
   const selectCampaign = async (campaign: CampaignDetails) => {
     setLoading(true);
     try {
-      // First get the list of numbers
       const numbersResponse = await makeApiCall(
         `/numbers/list?list_name=${encodeURIComponent(campaign.number_list)}&username=${encodeURIComponent(campaign.owner)}`, 
         'GET'
       );
       
-      // Get campaign status - will now handle 404 gracefully
-      const statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
+      let statusResponse;
+      try {
+        statusResponse = await makeApiCall(`/campaign/status/${encodeURIComponent(campaign.name)}`, 'GET');
+      } catch (error) {
+        console.log('Failed to fetch campaign status, assuming new campaign');
+        statusResponse = { details: [] };
+      }
       
-      // Format numbers and filter processed ones
       const processedNumbers = new Set((statusResponse?.details || []).map((d: any) => formatNumber(d.number)));
       const availableNumbers = numbersResponse.filter((n: NumberStatus) => 
         !processedNumbers.has(formatNumber(n.number))
@@ -327,10 +346,19 @@ const FlowSection = () => {
       setNumbers(availableNumbers);
       setSelectedCampaign(campaign);
       setError(null);
+      
+      if (availableNumbers.length === 0) {
+        toast({
+          title: "Info",
+          description: "All numbers in this campaign have been processed.",
+        });
+      }
     } catch (error) {
+      const errorMessage = (error as Error).message;
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: "Failed to load campaign details",
+        description: "Failed to load campaign details: " + errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -341,18 +369,37 @@ const FlowSection = () => {
   const createMarketerAccount = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(demoData.register),
-      });
+      let response;
+      try {
+        response = await fetch(`${BASE_URL}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(demoData.register),
+        });
+      } catch (error) {
+        throw new Error("Network error during registration");
+      }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (error) {
+        throw new Error("Invalid response format from server");
+      }
       
       if (!response.ok) {
+        if (data.error?.includes('already exists')) {
+          setMarketerAccount({ username: demoData.register.username });
+          setCurrentStep(2);
+          toast({
+            title: "Info",
+            description: "Using existing account",
+          });
+          return;
+        }
         throw new Error(data.error || data.message || 'Registration failed');
       }
 
