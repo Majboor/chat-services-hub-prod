@@ -200,48 +200,37 @@ const EndpointCard = ({
   );
 };
 
-export default function APITesting() {
-  const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
-    const url = `${BASE_URL}${endpoint}`;
-    
-    const options: RequestInit = {
-      method,
-      headers: payload instanceof FormData 
-        ? {} // Let the browser set the correct Content-Type for FormData
-        : method !== "GET" 
-          ? { 'Content-Type': 'application/json' }
-          : {},
-      body: payload instanceof FormData 
-        ? payload 
-        : payload 
-          ? JSON.stringify(payload) 
-          : undefined,
-    };
-
-    try {
-      const response = await fetch(url, options);
-      const text = await response.text(); // First get response as text
-      
-      let data;
-      try {
-        // Try to parse as JSON
-        data = text ? JSON.parse(text) : null;
-      } catch (e) {
-        console.error("Failed to parse response as JSON:", text);
-        throw new Error("Invalid JSON response from server");
-      }
-      
-      return {
-        status: response.status,
-        data
-      };
-    } catch (error) {
-      console.error("API call failed:", error);
-      throw error;
-    }
+const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
+  const url = `${BASE_URL}${endpoint}`;
+  
+  const options: RequestInit = {
+    method,
+    headers: payload instanceof FormData 
+      ? {} 
+      : method !== "GET" 
+        ? { 'Content-Type': 'application/json' }
+        : {},
+    body: payload instanceof FormData 
+      ? payload 
+      : payload 
+        ? JSON.stringify(payload) 
+        : undefined,
   };
 
-  // Update the demo data for campaign creation
+  try {
+    const response = await fetch(url, options);
+    const data = await response.json(); // Direct JSON parsing since we know the response is valid JSON
+    return {
+      status: response.status,
+      data
+    };
+  } catch (error) {
+    console.error("API call failed:", error);
+    throw error;
+  }
+};
+
+export default function APITesting() {
   const campaignDemoData = {
     name: "Demo Campaign",
     username: "demo_user",
@@ -306,6 +295,12 @@ export default function APITesting() {
               method="POST"
               demoPayload={demoData.createList}
               onTest={(payload) => makeRequest("/numbers/create-list", "POST", payload)}
+            />
+            <EndpointCard
+              title="List Numbers"
+              endpoint="/numbers/check"
+              method="GET"
+              onTest={() => makeRequest("/numbers/check", "GET")}
             />
             <EndpointCard
               title="Add Contact"
