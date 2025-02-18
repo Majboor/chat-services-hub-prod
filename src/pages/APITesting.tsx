@@ -128,7 +128,25 @@ const reviewDemoData = {
 const formatNumber = (number: string | number | undefined): string => {
   if (number === undefined || number === null) return '';
   const stringNumber = String(number);
-  return stringNumber.replace(/^\+/, '').trim();
+  return stringNumber.replace(/^\+/, '').replace(/\s+/g, '').trim();
+};
+
+const validateCampaignPayload = (payload: any) => {
+  const requiredFields = ['name', 'username', 'number_list', 'content'];
+  for (const field of requiredFields) {
+    if (!payload[field]) {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
+};
+
+const validateNumberPayload = (payload: any) => {
+  const requiredFields = ['list_name', 'username', 'number', 'name'];
+  for (const field of requiredFields) {
+    if (!payload[field]) {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
 };
 
 const EndpointCard = ({ 
@@ -150,6 +168,15 @@ const EndpointCard = ({
   const [mediaFiles, setMediaFiles] = useState<FileList | null>(null);
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const validatePayload = (payload: any) => {
+    if (endpoint.includes('/campaign/create')) {
+      validateCampaignPayload(payload);
+    } else if (endpoint.includes('/numbers/add')) {
+      validateNumberPayload(payload);
+    }
+  };
 
   const handleTest = async (useDemo: boolean) => {
     setLoading(true);
@@ -160,9 +187,26 @@ const EndpointCard = ({
       } else if (isMultipart) {
         const formData = new FormData();
         const data = useDemo ? demoPayload : JSON.parse(customPayload);
+        
+        try {
+          validatePayload(data);
+        } catch (error) {
+          toast({
+            title: "Validation Error",
+            description: (error as Error).message,
+            variant: "destructive",
+          });
+          return;
+        }
+
         Object.entries(data).forEach(([key, value]) => {
-          formData.append(key, value as string);
+          if (key === 'number') {
+            formData.append(key, formatNumber(value as string));
+          } else {
+            formData.append(key, value as string);
+          }
         });
+        
         if (mediaFiles) {
           Array.from(mediaFiles).forEach((file) => {
             formData.append("media", file);
@@ -171,6 +215,21 @@ const EndpointCard = ({
         payload = formData;
       } else {
         payload = useDemo ? demoPayload : JSON.parse(customPayload);
+        
+        try {
+          validatePayload(payload);
+        } catch (error) {
+          toast({
+            title: "Validation Error",
+            description: (error as Error).message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (payload.number) {
+          payload.number = formatNumber(payload.number);
+        }
       }
       
       const result = await onTest(payload);
@@ -184,6 +243,15 @@ const EndpointCard = ({
       }
       
       setResponse(result);
+      
+      if (endpoint.includes('/campaign/create') || 
+          endpoint.includes('/campaign/execute') ||
+          endpoint.includes('/campaign/process-number')) {
+        toast({
+          title: "Success",
+          description: `Operation completed successfully`,
+        });
+      }
     } catch (error) {
       console.error("Error in API call:", error);
       
@@ -198,6 +266,12 @@ const EndpointCard = ({
       setResponse({
         status: 500,
         data: { error: "Error in API call: " + (error as Error).message }
+      });
+      
+      toast({
+        title: "Error",
+        description: (error as Error).message,
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -323,12 +397,6 @@ const FlowSection = () => {
         return data;
       }
 
-      if (endpoint === '/auth/register' && !response.ok) {
-        if (data.error?.includes('already exists')) {
-          return { username: payload.username };
-        }
-      }
-      
       if (!response.ok) {
         throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
       }
@@ -338,12 +406,7 @@ const FlowSection = () => {
       console.error("API Error:", error);
       
       if (endpoint.includes('/campaign/status/')) {
-        console.log('Error in campaign status request - returning empty details');
         return { details: [] };
-      }
-      
-      if (endpoint === '/auth/register' && error instanceof TypeError) {
-        return { username: payload?.username };
       }
       
       const errorMessage = (error as Error).message;
