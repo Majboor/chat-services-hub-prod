@@ -21,13 +21,14 @@ export default function TestAPI() {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-
+  
+  const timestamp = Date.now();
   const form = useForm({
     defaultValues: {
-      username: "marketer1",
+      username: `marketer_${timestamp}`,
       password: "pass123",
-      listName: `list_${Date.now()}`,
-      campaignName: `campaign_${Date.now()}`,
+      listName: `list_${timestamp}`,
+      campaignName: `campaign_${timestamp}`,
     },
   });
 
@@ -41,8 +42,12 @@ export default function TestAPI() {
     try {
       // Register user
       addLog("➡️ Creating marketing user...");
-      await apiService.registerUser(data.username, data.password, "marketer");
-      addLog("✅ User created successfully");
+      const registerResponse = await apiService.registerUser(data.username, data.password, "marketer");
+      if (registerResponse.message === "User created successfully") {
+        addLog("✅ User created successfully");
+      } else {
+        throw new Error(registerResponse.message || "Failed to create user");
+      }
 
       // Create number list
       addLog("➡️ Creating number list...");
@@ -94,11 +99,13 @@ export default function TestAPI() {
         title: "Test Completed",
         description: "API test flow completed successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Test error:", error);
+      const errorMessage = error.message || "An error occurred during the test";
+      addLog(`❌ Error: ${errorMessage}`);
       toast({
         title: "Error",
-        description: "An error occurred during the test",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
