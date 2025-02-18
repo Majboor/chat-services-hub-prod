@@ -40,6 +40,8 @@ export default function TestAPI() {
   const runTest = async (data: any) => {
     setIsRunning(true);
     setLogs([]);
+    let createdCampaignId = ''; // Store the campaign ID returned from creation
+    
     try {
       // Register user
       addLog("➡️ Creating marketing user...");
@@ -78,8 +80,7 @@ export default function TestAPI() {
       // Create campaign with media file
       addLog("➡️ Creating campaign...");
       const formData = new FormData();
-      const campaignName = data.campaignName; // Store campaign name for later use
-      formData.append("name", campaignName);
+      formData.append("name", data.campaignName);
       formData.append("username", data.username);
       formData.append("number_list", data.listName);
       formData.append("content", "Test campaign message");
@@ -89,21 +90,25 @@ export default function TestAPI() {
       }
       
       const campaignResponse = await apiService.createCampaign(formData);
+      if (!campaignResponse.campaign_id) {
+        throw new Error("Campaign creation failed - no campaign ID returned");
+      }
+      createdCampaignId = campaignResponse.campaign_id; // Store the returned campaign ID
       addLog("✅ Campaign created successfully");
 
       // Execute campaign
       addLog("➡️ Starting campaign execution...");
-      await apiService.executeCampaign(campaignName, 10, 0);
+      await apiService.executeCampaign(createdCampaignId, 10, 0);
       addLog("✅ Campaign execution started");
 
       // Process numbers
       addLog("➡️ Processing campaign numbers...");
       
       // Get and process first number
-      const firstNumber = await apiService.getNextNumber(campaignName);
+      const firstNumber = await apiService.getNextNumber(createdCampaignId);
       if (firstNumber.number) {
         await apiService.processNumber({
-          campaign_id: campaignName,
+          campaign_id: createdCampaignId,
           number: firstNumber.number,
           status: "sent",
           notes: "Interested in product",
@@ -117,10 +122,10 @@ export default function TestAPI() {
       }
 
       // Get and process second number
-      const secondNumber = await apiService.getNextNumber(campaignName);
+      const secondNumber = await apiService.getNextNumber(createdCampaignId);
       if (secondNumber.number) {
         await apiService.processNumber({
-          campaign_id: campaignName,
+          campaign_id: createdCampaignId,
           number: secondNumber.number,
           status: "failed",
           notes: "Number not reachable",
@@ -136,10 +141,10 @@ export default function TestAPI() {
       addLog("➡️ Starting review flow...");
       
       // Get first number for review
-      const reviewNumber1 = await apiService.getNextNumberForReview(campaignName);
+      const reviewNumber1 = await apiService.getNextNumberForReview(createdCampaignId);
       if (reviewNumber1.number) {
         await apiService.updateReview({
-          campaign_id: campaignName,
+          campaign_id: createdCampaignId,
           number: reviewNumber1.number,
           approved: true,
           notes: "Good response, follow up needed"
@@ -148,10 +153,10 @@ export default function TestAPI() {
       }
 
       // Get second number for review
-      const reviewNumber2 = await apiService.getNextNumberForReview(campaignName);
+      const reviewNumber2 = await apiService.getNextNumberForReview(createdCampaignId);
       if (reviewNumber2.number) {
         await apiService.updateReview({
-          campaign_id: campaignName,
+          campaign_id: createdCampaignId,
           number: reviewNumber2.number,
           approved: false,
           notes: "Invalid number, remove from list"
@@ -160,7 +165,7 @@ export default function TestAPI() {
       }
 
       // Check final campaign status
-      const campaignStatus = await apiService.getCampaignStatus(campaignName);
+      const campaignStatus = await apiService.getCampaignStatus(createdCampaignId);
       addLog(`✅ Final campaign status: ${JSON.stringify(campaignStatus)}`);
 
       // List pending campaigns
