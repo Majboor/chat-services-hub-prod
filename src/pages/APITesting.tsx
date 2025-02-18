@@ -249,6 +249,7 @@ const FlowSection = () => {
   const { toast } = useToast();
   const [demoData] = useState(getDemoData());
   const [marketerAccount, setMarketerAccount] = useState<{ username: string } | null>(null);
+  const [crowdsourceAccount, setCrowdsourceAccount] = useState<CrowdsourceAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null);
   const [numbers, setNumbers] = useState<NumberStatus[]>([]);
