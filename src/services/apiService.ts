@@ -70,11 +70,17 @@ export const apiService = {
 
   // Campaigns
   createCampaign: async (formData: FormData) => {
+    // Remove headers to let browser set correct multipart/form-data boundary
     const response = await fetch(`${BASE_URL}/campaign/create`, {
       method: 'POST',
       body: formData,
     });
-    return await response.json();
+    const data = await response.json();
+    // Return the campaign name as the ID since that's what the server expects
+    return {
+      campaign_id: formData.get('name') as string,
+      ...data
+    };
   },
 
   executeCampaign: async (campaignId: string, batch_size: number, offset: number) => {
@@ -112,7 +118,6 @@ export const apiService = {
   },
 
   getCampaignStatus: async (campaignId: string) => {
-    // Fixed URL to match bash script pattern
     const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
     return await response.json();
   },
@@ -123,7 +128,7 @@ export const apiService = {
   },
 
   getNextNumberForReview: async (campaignId: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/review-next`);
+    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/next-number`);
     return await response.json();
   },
 
@@ -133,7 +138,6 @@ export const apiService = {
     approved: boolean;
     notes: string;
   }) => {
-    // Fixed URL to match bash script pattern
     const response = await fetch(`${BASE_URL}/campaign/update-review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
