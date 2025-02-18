@@ -563,6 +563,9 @@ export default function APITesting() {
     }
   };
 
+  const demoData = getDemoData();
+  const demoPayloadForCampaign = getCampaignDemoData(demoData.register.username, demoData.createList.list_name);
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -659,7 +662,7 @@ export default function APITesting() {
               title="Create Campaign"
               endpoint="/campaign/create"
               method="POST"
-              demoPayload={campaignDemoData}
+              demoPayload={demoPayloadForCampaign}
               onTest={(payload) => makeRequest("/campaign/create", "POST", payload)}
               isMultipart={true}
             />
