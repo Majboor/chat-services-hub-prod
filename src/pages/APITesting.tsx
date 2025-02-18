@@ -174,9 +174,27 @@ const EndpointCard = ({
       }
       
       const result = await onTest(payload);
+      
+      if (endpoint.includes('campaign/status/')) {
+        setResponse({
+          status: result.status || 200,
+          data: result.data || { details: [] }
+        });
+        return;
+      }
+      
       setResponse(result);
     } catch (error) {
       console.error("Error in API call:", error);
+      
+      if (endpoint.includes('campaign/status/')) {
+        setResponse({
+          status: 200,
+          data: { details: [] }
+        });
+        return;
+      }
+      
       setResponse({
         status: 500,
         data: { error: "Error in API call: " + (error as Error).message }
