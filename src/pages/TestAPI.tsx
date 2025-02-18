@@ -26,7 +26,7 @@ export default function TestAPI() {
   const timestamp = Date.now();
   const form = useForm({
     defaultValues: {
-      username: `marketer_${timestamp}`,
+      username: "marketer1", // Fixed username to match bash script
       password: "pass123",
       listName: `list_${timestamp}`,
       campaignName: `campaign_${timestamp}`,
@@ -62,7 +62,7 @@ export default function TestAPI() {
         await apiService.addNumberToList({
           list_name: data.listName,
           username: data.username,
-          number: `+1234567890${i}`, // Added + prefix to match bash script
+          number: `+1234567890${i}`,
           name: `Test User ${i}`,
           interests: "Technology",
           age: "25-35",
@@ -108,7 +108,7 @@ export default function TestAPI() {
       if (firstNumber.number) {
         await apiService.processNumber({
           campaign_id: campaignId,
-          number: `+${firstNumber.number}`, // Added + prefix
+          number: `+12345678901`, // Fixed number to match bash script exactly
           status: "sent",
           notes: "Interested in product",
           feedback: {
@@ -125,7 +125,7 @@ export default function TestAPI() {
       if (secondNumber.number) {
         await apiService.processNumber({
           campaign_id: campaignId,
-          number: `+${secondNumber.number}`, // Added + prefix
+          number: `+12345678902`, // Fixed number to match bash script exactly
           status: "failed",
           notes: "Number not reachable",
           feedback: {
@@ -144,7 +144,7 @@ export default function TestAPI() {
       if (reviewNumber1.number) {
         await apiService.updateReview({
           campaign_id: campaignId,
-          number: `+${reviewNumber1.number}`, // Added + prefix
+          number: `+12345678901`, // Fixed number to match bash script exactly
           approved: true,
           notes: "Good response, follow up needed"
         });
@@ -156,7 +156,7 @@ export default function TestAPI() {
       if (reviewNumber2.number) {
         await apiService.updateReview({
           campaign_id: campaignId,
-          number: `+${reviewNumber2.number}`, // Added + prefix
+          number: `+12345678902`, // Fixed number to match bash script exactly
           approved: false,
           notes: "Invalid number, remove from list"
         });
