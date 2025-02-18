@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiService } from "@/services/apiService";
 
+interface LocationState {
+  listName?: string;
+  username?: string;
+}
+
 export default function CreateCampaign() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { listName, username } = location.state as LocationState || {};
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [numberLists, setNumberLists] = useState<string[]>([]);
@@ -20,15 +28,25 @@ export default function CreateCampaign() {
     content: "",
     goals: "",
     expectedResponse: "",
-    selectedList: "",
+    selectedList: listName || "",
   });
   const [mediaFile, setMediaFile] = useState<File | null>(null);
 
   useEffect(() => {
-    // Fetch available number lists
+    if (!username) {
+      toast({
+        title: "Error",
+        description: "No user credentials found. Please create a list first.",
+        variant: "destructive",
+      });
+      navigate("/create-list");
+      return;
+    }
+
+    // Fetch available number lists for the specific user
     const fetchLists = async () => {
       try {
-        console.log("Fetching number lists...");
+        console.log("Fetching number lists for user:", username);
         const response = await apiService.getNumberLists();
         console.log("Fetched lists:", response);
         setNumberLists(response.lists || []);
@@ -42,14 +60,14 @@ export default function CreateCampaign() {
       }
     };
     fetchLists();
-  }, [toast]);
+  }, [username, toast, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!campaignData.name || !campaignData.content || !campaignData.selectedList) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields including selecting a number list",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -61,7 +79,7 @@ export default function CreateCampaign() {
       formData.append("name", campaignData.name);
       formData.append("content", campaignData.content);
       formData.append("number_list", campaignData.selectedList);
-      formData.append("owner", "marketer1"); // TODO: Replace with actual username
+      formData.append("owner", username || ""); // Use the passed username
       if (mediaFile) {
         formData.append("media", mediaFile);
       }

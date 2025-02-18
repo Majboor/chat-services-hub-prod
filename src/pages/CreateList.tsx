@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
@@ -18,7 +19,6 @@ import { apiService } from "@/services/apiService";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface CSVRow {
   [key: string]: string;
@@ -34,6 +34,8 @@ export default function CreateList() {
   const [numberColumnIndex, setNumberColumnIndex] = useState<string>("");
   const [customFields, setCustomFields] = useState<{[key: string]: string}[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -91,10 +93,10 @@ export default function CreateList() {
   };
 
   const handleSubmit = async () => {
-    if (!listName || !numberColumnIndex) {
+    if (!listName || !numberColumnIndex || !username || !password) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including username and password",
         variant: "destructive",
       });
       return;
@@ -102,12 +104,18 @@ export default function CreateList() {
 
     setIsProcessing(true);
     try {
-      await apiService.createNumberList(listName, "marketer1");
+      // First register/authenticate the user
+      const registerResponse = await apiService.registerUser(username, password, "marketer");
+      console.log("Register response:", registerResponse);
 
+      // Create the number list
+      await apiService.createNumberList(listName, username);
+
+      // Add numbers to the list
       for (const row of csvData) {
         const numberData = {
           list_name: listName,
-          username: "marketer1",
+          username: username, // Use the authenticated username
           number: row[numberColumnIndex],
           name: row[selectedHeaders.name] || "",
           interests: row[selectedHeaders.interests] || "",
@@ -134,7 +142,13 @@ export default function CreateList() {
         description: "List created successfully",
       });
 
-      navigate("/create-campaign", { state: { listName } });
+      // Pass the username to the campaign creation page
+      navigate("/create-campaign", { 
+        state: { 
+          listName,
+          username // Pass the username to the next page
+        }
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -154,6 +168,35 @@ export default function CreateList() {
         <h1 className="text-3xl font-bold mb-6">Create Number List</h1>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Authentication</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  required
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Upload CSV</CardTitle>
