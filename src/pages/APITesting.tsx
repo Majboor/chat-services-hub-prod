@@ -1,13 +1,12 @@
 
-import Navbar from "@/components/Navbar";
-import { SideDrawer } from "@/components/SideDrawer";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import Navbar from "@/components/Navbar";
+import { SideDrawer } from "@/components/SideDrawer";
 
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
@@ -16,26 +15,23 @@ interface ApiResponse {
   data: any;
 }
 
-// Demo data for quick testing
 const demoData = {
   register: {
     username: "demo_user",
-    password: "demo123",
+    password: "demo_password",
     role: "marketer"
   },
   login: {
     username: "demo_user",
-    password: "demo123"
+    password: "demo_password"
   },
-  credits: {
-    add: {
-      username: "demo_user",
-      amount: 100.50
-    },
-    remove: {
-      username: "demo_user",
-      amount: 25.75
-    }
+  addCredits: {
+    username: "demo_user",
+    amount: 100.50
+  },
+  removeCredits: {
+    username: "demo_user",
+    amount: 25.75
   },
   createList: {
     list_name: "demo_list",
@@ -47,22 +43,46 @@ const demoData = {
     number: "+1234567890",
     name: "John Doe",
     interests: "Technology",
-    age: "25-34",
+    age: "25-30",
     location: "New York",
     gender: "Male",
     language: "English",
-    occupation: "Marketing Manager",
-    preferred_contact_time: "Morning",
-    tags: "VIP",
+    occupation: "Engineer",
+    preferred_contact_time: "Evening",
+    tags: "tech,engineering",
     additional_details: {
       social_media: {
-        facebook: "johndoe",
+        facebook: "john.doe",
         twitter: "@johndoe"
       },
       custom_fields: {
-        company: "Tech Corp"
+        key1: "value1"
       }
     }
+  }
+};
+
+const campaignDemoData = {
+  name: "Demo Campaign",
+  username: "demo_user",
+  number_list: "demo_list",
+  content: "Hello! This is a demo campaign message."
+};
+
+const executionDemoData = {
+  batch_size: 10,
+  offset: 0
+};
+
+const numberStatusDemoData = {
+  campaign_id: "demo_campaign",
+  number: "+1234567890",
+  status: "sent",
+  notes: "Message delivered successfully",
+  error_message: "",
+  additional_data: {
+    delivery_time: new Date().toISOString(),
+    custom_field: "value"
   }
 };
 
@@ -81,48 +101,40 @@ const EndpointCard = ({
   onTest: (payload: any) => Promise<ApiResponse>;
   isMultipart?: boolean;
 }) => {
-  const [customPayload, setCustomPayload] = useState(
-    demoPayload ? JSON.stringify(demoPayload, null, 2) : ""
-  );
+  const [customPayload, setCustomPayload] = useState("");
+  const [mediaFiles, setMediaFiles] = useState<FileList | null>(null);
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mediaFiles, setMediaFiles] = useState<FileList | null>(null);
 
-  const handleTest = async (useDemoData: boolean) => {
+  const handleTest = async (useDemo: boolean) => {
+    setLoading(true);
     try {
-      setLoading(true);
       let payload;
-      
-      if (isMultipart) {
+      if (method === "GET") {
+        payload = undefined;
+      } else if (isMultipart) {
         const formData = new FormData();
-        const data = useDemoData ? demoPayload : JSON.parse(customPayload);
-        
-        // Add all fields to FormData
+        const data = useDemo ? demoPayload : JSON.parse(customPayload);
         Object.entries(data).forEach(([key, value]) => {
-          if (key !== 'media') {
-            formData.append(key, value as string);
-          }
+          formData.append(key, value as string);
         });
-
-        // Add media files if present
         if (mediaFiles) {
-          Array.from(mediaFiles).forEach(file => {
-            formData.append('media', file);
+          Array.from(mediaFiles).forEach((file) => {
+            formData.append("media", file);
           });
         }
         payload = formData;
-      } else if (method !== "GET") {
-        payload = useDemoData ? demoPayload : JSON.parse(customPayload);
+      } else {
+        payload = useDemo ? demoPayload : JSON.parse(customPayload);
       }
-
+      
       const result = await onTest(payload);
       setResponse(result);
-      toast.success("API call completed");
     } catch (error) {
-      toast.error("Error in API call: " + (error as Error).message);
+      console.error("Error in API call:", error);
       setResponse({
         status: 500,
-        data: { error: (error as Error).message }
+        data: { error: "Error in API call: " + (error as Error).message }
       });
     } finally {
       setLoading(false);
@@ -194,59 +206,51 @@ const EndpointCard = ({
   );
 };
 
-const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
-  const url = `${BASE_URL}${endpoint}`;
-  
-  const options: RequestInit = {
-    method,
-    headers: payload instanceof FormData 
-      ? {} 
-      : method !== "GET" 
-        ? { 'Content-Type': 'application/json' }
-        : {},
-    body: payload instanceof FormData 
-      ? payload 
-      : payload 
-        ? JSON.stringify(payload) 
-        : undefined,
-  };
-
-  try {
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return {
-      status: response.status,
-      data
-    };
-  } catch (error) {
-    console.error("API call failed:", error);
-    throw error;
-  }
-};
-
 export default function APITesting() {
-  const campaignDemoData = {
-    name: "Demo Campaign",
-    username: "demo_user",
-    number_list: "demo_list",
-    content: "Hello! This is a demo campaign message."
+  const makeRequest = async (endpoint: string, method: string, payload?: any): Promise<ApiResponse> => {
+    const url = `${BASE_URL}${endpoint}`;
+    
+    const options: RequestInit = {
+      method,
+      headers: payload instanceof FormData 
+        ? {} 
+        : method !== "GET" 
+          ? { 'Content-Type': 'application/json' }
+          : {},
+      body: payload instanceof FormData 
+        ? payload 
+        : payload 
+          ? JSON.stringify(payload) 
+          : undefined,
+    };
+
+    try {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      return {
+        status: response.status,
+        data
+      };
+    } catch (error) {
+      console.error("API call failed:", error);
+      throw error;
+    }
   };
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="min-h-screen">
       <Navbar />
       <SideDrawer />
-      
-      <div className="container mx-auto pt-24 px-4">
-        <h1 className="text-3xl font-bold mb-8">API Testing Dashboard</h1>
+      <div className="container mx-auto py-6 px-4 space-y-6">
+        <h1 className="text-3xl font-bold">API Testing Interface</h1>
         
         <Tabs defaultValue="auth">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="auth">Authentication</TabsTrigger>
             <TabsTrigger value="credits">Credits</TabsTrigger>
-            <TabsTrigger value="contacts">Contact Management</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaign Management</TabsTrigger>
-            <TabsTrigger value="execution">Campaign Execution</TabsTrigger>
+            <TabsTrigger value="contacts">Contacts</TabsTrigger>
+            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+            <TabsTrigger value="execution">Execution</TabsTrigger>
           </TabsList>
 
           <TabsContent value="auth" className="mt-6">
@@ -271,21 +275,21 @@ export default function APITesting() {
               title="Add Credits"
               endpoint="/credits/add"
               method="POST"
-              demoPayload={demoData.credits.add}
+              demoPayload={demoData.addCredits}
               onTest={(payload) => makeRequest("/credits/add", "POST", payload)}
             />
             <EndpointCard
               title="Remove Credits"
               endpoint="/credits/remove"
               method="POST"
-              demoPayload={demoData.credits.remove}
+              demoPayload={demoData.removeCredits}
               onTest={(payload) => makeRequest("/credits/remove", "POST", payload)}
             />
             <EndpointCard
               title="Check Credits"
               endpoint="/credits/check/{username}"
               method="GET"
-              onTest={(payload) => makeRequest(`/credits/check/${payload?.username || 'demo_user'}`, "GET")}
+              onTest={() => makeRequest("/credits/check/demo_user", "GET")}
             />
           </TabsContent>
 
@@ -301,8 +305,7 @@ export default function APITesting() {
               title="List Numbers"
               endpoint="/numbers/list"
               method="GET"
-              demoPayload={{ list_name: "demo_list", username: "demo_user" }}
-              onTest={(payload) => makeRequest(`/numbers/list?list_name=${payload.list_name}&username=${payload.username}`, "GET")}
+              onTest={() => makeRequest("/numbers/list?list_name=demo_list&username=demo_user", "GET")}
             />
             <EndpointCard
               title="Add Contact"
@@ -343,8 +346,7 @@ export default function APITesting() {
               title="Get Campaign Details"
               endpoint="/campaign/{name}"
               method="GET"
-              demoPayload={{ name: "Demo Campaign" }}
-              onTest={(payload) => makeRequest(`/campaign/${payload.name}`, "GET")}
+              onTest={() => makeRequest("/campaign/Demo%20Campaign", "GET")}
             />
           </TabsContent>
 
@@ -353,49 +355,27 @@ export default function APITesting() {
               title="Start Campaign Execution"
               endpoint="/campaign/execute/{campaign_name}"
               method="POST"
-              demoPayload={{ 
-                campaign_name: "Demo Campaign",
-                batch_size: 10,
-                offset: 0
-              }}
-              onTest={(payload) => {
-                const { campaign_name, ...body } = payload;
-                return makeRequest(`/campaign/execute/${campaign_name}`, "POST", body);
-              }}
+              demoPayload={executionDemoData}
+              onTest={(payload) => makeRequest("/campaign/execute/Demo%20Campaign", "POST", payload)}
             />
             <EndpointCard
               title="Update Number Status"
               endpoint="/campaign/number-status"
               method="POST"
-              demoPayload={{
-                campaign_id: "demo_1",
-                number: "+1234567890",
-                status: "sent",
-                notes: "Delivered successfully",
-                error_message: "",
-                additional_data: {
-                  delivery_time: new Date().toISOString(),
-                  custom_field: "value"
-                }
-              }}
+              demoPayload={numberStatusDemoData}
               onTest={(payload) => makeRequest("/campaign/number-status", "POST", payload)}
             />
             <EndpointCard
               title="Get Campaign Status"
               endpoint="/campaign/status/{campaign_name}"
               method="GET"
-              demoPayload={{ campaign_name: "Demo Campaign" }}
-              onTest={(payload) => makeRequest(`/campaign/status/${payload.campaign_name}`, "GET")}
+              onTest={() => makeRequest("/campaign/status/Demo%20Campaign", "GET")}
             />
             <EndpointCard
               title="Check Number Status"
               endpoint="/campaign/number-status"
               method="GET"
-              demoPayload={{ 
-                campaign_id: "demo_1",
-                number: "+1234567890"
-              }}
-              onTest={(payload) => makeRequest(`/campaign/number-status?campaign_id=${payload.campaign_id}&number=${payload.number}`, "GET")}
+              onTest={() => makeRequest("/campaign/number-status?campaign_id=demo_campaign&number=%2B1234567890", "GET")}
             />
           </TabsContent>
         </Tabs>
