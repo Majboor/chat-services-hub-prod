@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export default function TestAPI() {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const timestamp = Date.now();
   const form = useForm({
@@ -74,13 +75,17 @@ export default function TestAPI() {
         addLog(`✅ Added number ${i} to list`);
       }
 
-      // Create campaign
+      // Create campaign with media file
       addLog("➡️ Creating campaign...");
       const formData = new FormData();
       formData.append("name", data.campaignName);
       formData.append("username", data.username);
       formData.append("number_list", data.listName);
       formData.append("content", "Test campaign message");
+      
+      if (fileInputRef.current?.files?.[0]) {
+        formData.append("media", fileInputRef.current.files[0]);
+      }
       
       const campaignResponse = await apiService.createCampaign(formData);
       addLog("✅ Campaign created successfully");
@@ -89,6 +94,73 @@ export default function TestAPI() {
       addLog("➡️ Starting campaign execution...");
       await apiService.executeCampaign(data.campaignName, 10, 0);
       addLog("✅ Campaign execution started");
+
+      // Process numbers
+      addLog("➡️ Processing campaign numbers...");
+      
+      // Get and process first number
+      const firstNumber = await apiService.getNextNumber(data.campaignName);
+      if (firstNumber.number) {
+        await apiService.processNumber({
+          campaign_id: data.campaignName,
+          number: firstNumber.number,
+          status: "sent",
+          notes: "Interested in product",
+          feedback: {
+            interest_level: "high",
+            follow_up: true,
+            preferred_time: "morning"
+          }
+        });
+        addLog("✅ Processed first number with success status");
+      }
+
+      // Get and process second number
+      const secondNumber = await apiService.getNextNumber(data.campaignName);
+      if (secondNumber.number) {
+        await apiService.processNumber({
+          campaign_id: data.campaignName,
+          number: secondNumber.number,
+          status: "failed",
+          notes: "Number not reachable",
+          feedback: {
+            error_type: "invalid_number",
+            retry_recommended: false
+          }
+        });
+        addLog("✅ Processed second number with failure status");
+      }
+
+      // Review Flow
+      addLog("➡️ Starting review flow...");
+      
+      // Get first number for review
+      const reviewNumber1 = await apiService.getNextNumberForReview(data.campaignName);
+      if (reviewNumber1.number) {
+        await apiService.updateReview({
+          campaign_id: data.campaignName,
+          number: reviewNumber1.number,
+          approved: true,
+          notes: "Good response, follow up needed"
+        });
+        addLog("✅ Reviewed first number (approved)");
+      }
+
+      // Get second number for review
+      const reviewNumber2 = await apiService.getNextNumberForReview(data.campaignName);
+      if (reviewNumber2.number) {
+        await apiService.updateReview({
+          campaign_id: data.campaignName,
+          number: reviewNumber2.number,
+          approved: false,
+          notes: "Invalid number, remove from list"
+        });
+        addLog("✅ Reviewed second number (rejected)");
+      }
+
+      // Check final campaign status
+      const campaignStatus = await apiService.getCampaignStatus(data.campaignName);
+      addLog(`✅ Final campaign status: ${JSON.stringify(campaignStatus)}`);
 
       // List pending campaigns
       addLog("➡️ Checking pending campaigns...");
@@ -154,6 +226,16 @@ export default function TestAPI() {
                       </FormItem>
                     )}
                   />
+                  <FormItem>
+                    <FormLabel>Campaign Media (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="file" 
+                        ref={fileInputRef}
+                        accept="image/*"
+                      />
+                    </FormControl>
+                  </FormItem>
                   <Button type="submit" disabled={isRunning}>
                     {isRunning ? "Running Test..." : "Run Test"}
                   </Button>
