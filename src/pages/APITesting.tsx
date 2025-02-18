@@ -284,18 +284,27 @@ const FlowSection = () => {
       try {
         data = await response.json();
       } catch (e) {
+        console.log('Failed to parse JSON response:', e);
+        if (endpoint.includes('/campaign/status/')) {
+          return { details: [] };
+        }
         data = { error: 'Invalid response format' };
       }
 
-      if (response.status === 404 && endpoint.includes('/campaign/status/')) {
-        console.log('Campaign status not found - treating as new campaign');
-        return { details: [] };
+      if (endpoint.includes('/campaign/status/')) {
+        if (response.status === 404) {
+          console.log('Campaign status not found - new campaign');
+          return { details: [] };
+        }
+        if (!response.ok) {
+          console.log(`Campaign status error (${response.status}):`, data);
+          return { details: [] };
+        }
+        return data;
       }
-      
+
       if (endpoint === '/auth/register' && !response.ok) {
-        console.log('Registration response:', data);
         if (data.error?.includes('already exists')) {
-          console.log('User already exists, proceeding with existing account');
           return { username: payload.username };
         }
       }
@@ -309,12 +318,11 @@ const FlowSection = () => {
       console.error("API Error:", error);
       
       if (endpoint.includes('/campaign/status/')) {
-        console.log('Error fetching campaign status - treating as new campaign');
+        console.log('Error in campaign status request - returning empty details');
         return { details: [] };
       }
       
       if (endpoint === '/auth/register' && error instanceof TypeError) {
-        console.log('Network error during registration, attempting to proceed');
         return { username: payload?.username };
       }
       
