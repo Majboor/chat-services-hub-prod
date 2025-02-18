@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -29,14 +28,21 @@ export default function CreateCampaign() {
     // Fetch available number lists
     const fetchLists = async () => {
       try {
-        const response = await apiService.createNumberList("", ""); // Using this to get list of available lists
+        console.log("Fetching number lists...");
+        const response = await apiService.getNumberLists();
+        console.log("Fetched lists:", response);
         setNumberLists(response.lists || []);
       } catch (error) {
         console.error("Error fetching number lists:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch number lists",
+          variant: "destructive",
+        });
       }
     };
     fetchLists();
-  }, []);
+  }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,12 +107,15 @@ export default function CreateCampaign() {
                 <Label htmlFor="listSelect">Select Number List</Label>
                 <select
                   id="listSelect"
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2 border rounded-md bg-white"
                   value={campaignData.selectedList}
-                  onChange={(e) => setCampaignData({
-                    ...campaignData,
-                    selectedList: e.target.value
-                  })}
+                  onChange={(e) => {
+                    console.log("Selected list:", e.target.value);
+                    setCampaignData({
+                      ...campaignData,
+                      selectedList: e.target.value
+                    });
+                  }}
                   required
                 >
                   <option value="">Select a list</option>

@@ -206,4 +206,11 @@ export const apiService = {
     console.log("Update review response:", responseData);
     return responseData;
   },
+
+  getNumberLists: async () => {
+    const response = await fetch(`${BASE_URL}/numbers/lists`);
+    const data = await response.json();
+    console.log("Available number lists:", data); // Debug log
+    return data;
+  },
 };
