@@ -109,6 +109,23 @@ export default function V1() {
       }
     }
 
+    const hasMultipleNumbers = dataToProcess.some(row => {
+      const cellValue = row[numberColumn];
+      try {
+        const regex = new RegExp(numberRegex, 'g');
+        const matches = cellValue.match(regex);
+        return matches && matches.length > 1;
+      } catch {
+        return false;
+      }
+    });
+
+    if (hasMultipleNumbers && multipleNumbersHandling === "") {
+      setTempProcessedData([]);
+      setShowMultipleNumbersDialog(true);
+      return null;
+    }
+
     const processedNumbers = dataToProcess.map(row => {
       const phoneNumber = processPhoneNumbers(row);
       if (!phoneNumber) return null;
@@ -128,24 +145,18 @@ export default function V1() {
       return null;
     }
 
-    const hasMultipleNumbers = csvData.some(row => {
-      const cellValue = row[numberColumn];
-      try {
-        const regex = new RegExp(numberRegex, 'g');
-        const matches = cellValue.match(regex);
-        return matches && matches.length > 1;
-      } catch {
-        return false;
-      }
-    });
-
-    if (hasMultipleNumbers) {
-      setTempProcessedData(processedNumbers);
-      setShowMultipleNumbersDialog(true);
-      return null;
-    }
-
     return processedNumbers;
+  };
+
+  const handleMultipleNumbersDecision = (useFirstNumber: boolean) => {
+    setShowMultipleNumbersDialog(false);
+    setMultipleNumbersHandling(useFirstNumber ? "first" : "skip");
+    toast({
+      title: "Selection saved",
+      description: useFirstNumber 
+        ? "Will use the first number from cells with multiple numbers" 
+        : "Will skip rows with multiple numbers",
+    });
   };
 
   const handleCreateCampaign = async () => {
@@ -210,16 +221,6 @@ export default function V1() {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleMultipleNumbersDecision = (useFirstNumber: boolean) => {
-    setMultipleNumbersHandling(useFirstNumber ? "first" : "skip");
-    setShowMultipleNumbersDialog(false);
-    
-    if (tempProcessedData.length > 0) {
-      setIsLoading(true);
-      handleCreateCampaign();
     }
   };
 
