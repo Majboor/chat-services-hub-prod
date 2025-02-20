@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
 interface CSVRow {
   [key: string]: string;
@@ -34,6 +35,7 @@ const USERNAME = "Farhana";
 
 export default function V1() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [campaignName, setCampaignName] = useState("");
   const [adPost, setAdPost] = useState("");
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
@@ -236,6 +238,8 @@ export default function V1() {
         title: "Success",
         description: `Campaign created with ${formattedNumbers.length} numbers`,
       });
+
+      navigate("/campaigns");
 
     } catch (error: any) {
       console.error("Campaign creation error:", error);
