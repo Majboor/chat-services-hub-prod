@@ -50,6 +50,7 @@ export default function V1() {
   const [tempProcessedData, setTempProcessedData] = useState<{ name: string; phone: string }[]>([]);
   const [rowSelection, setRowSelection] = useState<"top" | "skip">("top");
   const [rowCount, setRowCount] = useState<number>(0);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -182,15 +183,25 @@ export default function V1() {
       formData.append('timezone', timezone);
       formData.append('created_by', USERNAME);
 
+      if (mediaFile) {
+        formData.append('media', mediaFile);
+      } else {
+        const emptyBlob = new Blob([], { type: 'application/octet-stream' });
+        formData.append('media', emptyBlob, 'placeholder.txt');
+      }
+
+      console.log("Creating campaign with formData:", Object.fromEntries(formData.entries()));
+
       const campaignResponse = await fetch(`${BASE_URL}/campaign/create`, {
         method: 'POST',
         body: formData,
       });
 
       const campaignData = await campaignResponse.json();
+      console.log("Campaign creation response:", campaignData);
       
       if (campaignData.status !== "success") {
-        throw new Error("Failed to create campaign");
+        throw new Error(campaignData.error || "Failed to create campaign");
       }
 
       const numbersResponse = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignData.campaign_id}`, {
@@ -202,9 +213,10 @@ export default function V1() {
       });
 
       const numbersData = await numbersResponse.json();
+      console.log("Numbers addition response:", numbersData);
       
       if (numbersData.status !== "success") {
-        throw new Error("Failed to add numbers to campaign");
+        throw new Error(numbersData.error || "Failed to add numbers to campaign");
       }
 
       toast({
@@ -276,6 +288,16 @@ export default function V1() {
                 <input {...getInputProps()} />
                 <p>Drag & drop a CSV file here, or click to select one</p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="media">Media File (Optional)</Label>
+              <Input
+                id="media"
+                type="file"
+                accept="image/*,video/*"
+                onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
+              />
             </div>
 
             {headers.length > 0 && (
