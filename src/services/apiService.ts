@@ -17,11 +17,19 @@ export interface NumberDetails {
 }
 
 export interface CampaignDetails {
-  content: string;
-  media_files: string[];
+  campaign_id: string;
+  created_at: string;
+  created_by: string;
+  end_time: string;
+  image_url: string;
+  message: string;
+  messages_pending: number;
+  messages_sent: number;
   name: string;
-  number_list: string;
-  owner: string;
+  start_time: string;
+  status: string;
+  timezone: string;
+  total_numbers: number;
 }
 
 export interface CampaignStatus {
@@ -191,8 +199,14 @@ export const apiService = {
     }
   },
 
-  listAllCampaigns: async () => {
-    const response = await fetch(`${BASE_URL}/campaign/list-all`);
+  listAllCampaigns: async (username: string) => {
+    const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
+    const data = await response.json();
+    return data.campaigns || [];
+  },
+
+  getCampaignNumbers: async (campaignId: string) => {
+    const response = await fetch(`${BASE_URL}/campaign/numbers/${campaignId}`);
     return await response.json();
   },
 

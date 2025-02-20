@@ -2,37 +2,35 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Check, Clock, X, MessageSquare } from "lucide-react";
+import { Check, Clock, X, MessageSquare, Users, ChevronDown, ChevronUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
-import { apiService, CampaignStatus } from "@/services/apiService";
+import { apiService, CampaignDetails } from "@/services/apiService";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-interface Campaign {
-  campaign_id: string;
+interface CampaignNumber {
+  number: string;
   name: string;
-  status: CampaignStatus;
+  status: 'sent' | 'pending' | 'failed';
+  sent_at?: string;
 }
 
 export default function Campaigns() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const [campaignNumbers, setCampaignNumbers] = useState<CampaignNumber[]>([]);
+  const [showNumbersDialog, setShowNumbersDialog] = useState(false);
   const { toast } = useToast();
+
+  const USERNAME = "Farhana"; // This should come from your auth system
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const allCampaigns = await apiService.listAllCampaigns();
-        const campaignsWithStatus = await Promise.all(
-          allCampaigns.map(async (campaign: any) => {
-            const status = await apiService.getCampaignStatus(campaign.campaign_id);
-            return {
-              ...campaign,
-              status,
-            };
-          })
-        );
-        setCampaigns(campaignsWithStatus);
+        const campaigns = await apiService.listAllCampaigns(USERNAME);
+        setCampaigns(campaigns);
       } catch (error) {
         toast({
           title: "Error",
@@ -45,87 +43,173 @@ export default function Campaigns() {
     };
 
     fetchCampaigns();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchCampaigns, 30000);
     return () => clearInterval(interval);
   }, [toast]);
+
+  const handleCampaignClick = async (campaignId: string) => {
+    try {
+      setSelectedCampaign(campaignId);
+      setShowNumbersDialog(true);
+      const numbers = await apiService.getCampaignNumbers(campaignId);
+      setCampaignNumbers(numbers);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load campaign numbers",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const activeCampaigns = campaigns.filter(c => c.status !== "completed");
+  const completedCampaigns = campaigns.filter(c => c.status === "completed");
+
+  const CampaignTable = ({ campaigns, title }: { campaigns: CampaignDetails[], title: string }) => (
+    <Card className="mb-8">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campaign Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>People Reached</TableHead>
+              <TableHead>Pending</TableHead>
+              <TableHead>Messages Sent</TableHead>
+              <TableHead>Messages Failed</TableHead>
+              <TableHead>Total Numbers</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {campaigns.map((campaign) => (
+              <TableRow 
+                key={campaign.campaign_id}
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleCampaignClick(campaign.campaign_id)}
+              >
+                <TableCell className="font-medium">{campaign.name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {campaign.status === "completed" ? (
+                      <>
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Completed</span>
+                      </>
+                    ) : campaign.messages_pending > 0 ? (
+                      <>
+                        <Clock className="h-4 w-4 text-yellow-500" />
+                        <span>In Progress</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <span>Scheduled</span>
+                      </>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    {campaign.messages_sent}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-yellow-500" />
+                    {campaign.messages_pending}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-green-500" />
+                    {campaign.messages_sent}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <X className="h-4 w-4 text-red-500" />
+                    {campaign.total_numbers - campaign.messages_sent - campaign.messages_pending}
+                  </div>
+                </TableCell>
+                <TableCell>{campaign.total_numbers}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <SideDrawer />
       <main className="container mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Campaigns</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center items-center h-32">
-                <Clock className="animate-spin h-8 w-8 text-muted-foreground" />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Campaign Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Sent</TableHead>
-                    <TableHead>Pending</TableHead>
-                    <TableHead>Failed</TableHead>
-                    <TableHead>Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {campaigns.map((campaign) => (
-                    <TableRow key={campaign.campaign_id}>
-                      <TableCell>{campaign.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {campaign.status.pending > 0 ? (
-                            <>
-                              <Clock className="h-4 w-4 text-yellow-500" />
-                              <span>In Progress</span>
-                            </>
-                          ) : campaign.status.failed > 0 ? (
-                            <>
-                              <X className="h-4 w-4 text-red-500" />
-                              <span>Has Failures</span>
-                            </>
-                          ) : (
-                            <>
-                              <Check className="h-4 w-4 text-green-500" />
-                              <span>Completed</span>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-green-500" />
-                          {campaign.status.sent}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-yellow-500" />
-                          {campaign.status.pending}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <X className="h-4 w-4 text-red-500" />
-                          {campaign.status.failed}
-                        </div>
-                      </TableCell>
-                      <TableCell>{campaign.status.total}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <Clock className="animate-spin h-8 w-8 text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            {activeCampaigns.length > 0 && (
+              <CampaignTable campaigns={activeCampaigns} title="Active Campaigns" />
             )}
-          </CardContent>
-        </Card>
+            {completedCampaigns.length > 0 && (
+              <CampaignTable campaigns={completedCampaigns} title="Completed Campaigns" />
+            )}
+          </>
+        )}
+
+        <Dialog open={showNumbersDialog} onOpenChange={setShowNumbersDialog}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Campaign Numbers</DialogTitle>
+            </DialogHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Number</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Sent At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {campaignNumbers.map((number, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{number.name}</TableCell>
+                    <TableCell>{number.number}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {number.status === 'sent' ? (
+                          <>
+                            <Check className="h-4 w-4 text-green-500" />
+                            <span>Sent</span>
+                          </>
+                        ) : number.status === 'pending' ? (
+                          <>
+                            <Clock className="h-4 w-4 text-yellow-500" />
+                            <span>Pending</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="h-4 w-4 text-red-500" />
+                            <span>Failed</span>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{number.sent_at || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
