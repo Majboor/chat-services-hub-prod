@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Check, Clock, X, MessageSquare, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Clock, X, MessageSquare, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { apiService, CampaignDetails } from "@/services/apiService";
@@ -22,6 +22,7 @@ export default function Campaigns() {
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [campaignNumbers, setCampaignNumbers] = useState<CampaignNumber[]>([]);
   const [showNumbersDialog, setShowNumbersDialog] = useState(false);
+  const [isLoadingNumbers, setIsLoadingNumbers] = useState(false);
   const { toast } = useToast();
 
   const USERNAME = "Farhana"; // This should come from your auth system
@@ -51,14 +52,25 @@ export default function Campaigns() {
     try {
       setSelectedCampaign(campaignId);
       setShowNumbersDialog(true);
-      const numbers = await apiService.getCampaignNumbers(campaignId);
-      setCampaignNumbers(numbers);
+      setIsLoadingNumbers(true);
+      const response = await apiService.getCampaignNumbers(campaignId);
+      
+      // Handle the case where the response has a data property
+      const numbers = response.data || [];
+      if (Array.isArray(numbers)) {
+        setCampaignNumbers(numbers);
+      } else {
+        setCampaignNumbers([]);
+      }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load campaign numbers",
         variant: "destructive",
       });
+      setCampaignNumbers([]);
+    } finally {
+      setIsLoadingNumbers(false);
     }
   };
 
@@ -169,45 +181,55 @@ export default function Campaigns() {
             <DialogHeader>
               <DialogTitle>Campaign Numbers</DialogTitle>
             </DialogHeader>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Sent At</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {campaignNumbers.map((number, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{number.name}</TableCell>
-                    <TableCell>{number.number}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {number.status === 'sent' ? (
-                          <>
-                            <Check className="h-4 w-4 text-green-500" />
-                            <span>Sent</span>
-                          </>
-                        ) : number.status === 'pending' ? (
-                          <>
-                            <Clock className="h-4 w-4 text-yellow-500" />
-                            <span>Pending</span>
-                          </>
-                        ) : (
-                          <>
-                            <X className="h-4 w-4 text-red-500" />
-                            <span>Failed</span>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{number.sent_at || '-'}</TableCell>
+            {isLoadingNumbers ? (
+              <div className="flex justify-center items-center h-32">
+                <Clock className="animate-spin h-8 w-8 text-muted-foreground" />
+              </div>
+            ) : campaignNumbers && campaignNumbers.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Number</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sent At</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {campaignNumbers.map((number, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{number.name}</TableCell>
+                      <TableCell>{number.number}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {number.status === 'sent' ? (
+                            <>
+                              <Check className="h-4 w-4 text-green-500" />
+                              <span>Sent</span>
+                            </>
+                          ) : number.status === 'pending' ? (
+                            <>
+                              <Clock className="h-4 w-4 text-yellow-500" />
+                              <span>Pending</span>
+                            </>
+                          ) : (
+                            <>
+                              <X className="h-4 w-4 text-red-500" />
+                              <span>Failed</span>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{number.sent_at || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No numbers found for this campaign
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </main>
