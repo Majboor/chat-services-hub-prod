@@ -177,17 +177,17 @@ export default function V1() {
     try {
       const formData = new FormData();
       formData.append('name', campaignName);
-      formData.append('message', adPost);
+      formData.append('created_by', USERNAME);
       formData.append('start_time', startTime);
       formData.append('end_time', endTime);
       formData.append('timezone', timezone);
-      formData.append('created_by', USERNAME);
+      formData.append('message', adPost);
 
       if (mediaFile) {
-        formData.append('media', mediaFile);
+        formData.append('image', mediaFile);
       } else {
         const emptyBlob = new Blob([], { type: 'application/octet-stream' });
-        formData.append('media', emptyBlob, 'placeholder.txt');
+        formData.append('image', emptyBlob, 'placeholder.png');
       }
 
       console.log("Creating campaign with formData:", Object.fromEntries(formData.entries()));
@@ -197,6 +197,10 @@ export default function V1() {
         body: formData,
       });
 
+      if (!campaignResponse.ok) {
+        throw new Error(`Failed to create campaign: ${campaignResponse.statusText}`);
+      }
+
       const campaignData = await campaignResponse.json();
       console.log("Campaign creation response:", campaignData);
       
@@ -204,13 +208,22 @@ export default function V1() {
         throw new Error(campaignData.error || "Failed to create campaign");
       }
 
+      const formattedNumbers = numbers.map(num => ({
+        name: num.name,
+        phone: num.phone.startsWith('92') ? num.phone : `92${num.phone}`
+      }));
+
       const numbersResponse = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignData.campaign_id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ numbers }),
+        body: JSON.stringify({ numbers: formattedNumbers }),
       });
+
+      if (!numbersResponse.ok) {
+        throw new Error(`Failed to add numbers: ${numbersResponse.statusText}`);
+      }
 
       const numbersData = await numbersResponse.json();
       console.log("Numbers addition response:", numbersData);
@@ -221,7 +234,7 @@ export default function V1() {
 
       toast({
         title: "Success",
-        description: `Campaign created with ${numbersData.total_numbers} numbers`,
+        description: `Campaign created with ${formattedNumbers.length} numbers`,
       });
 
     } catch (error: any) {
