@@ -34,13 +34,15 @@ export default function ReviewNumbers() {
   const [isLoading, setIsLoading] = useState(false);
   const [userCredits, setUserCredits] = useState(100);
 
+  const USERNAME = "Farhana"; // This should come from your auth system
+
   useEffect(() => {
     loadCampaigns();
   }, []);
 
   const loadCampaigns = async () => {
     try {
-      const response = await apiService.listAllCampaigns();
+      const response = await apiService.listAllCampaigns(USERNAME);
       // Sanitize campaign names when receiving them
       const validCampaigns = response.map((campaign: Campaign) => ({
         ...campaign,
