@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
@@ -17,6 +16,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface CSVRow {
   [key: string]: string;
@@ -37,6 +44,10 @@ export default function V1() {
   const [endTime, setEndTime] = useState("17:00");
   const [timezone, setTimezone] = useState("Asia/Karachi");
   const [isLoading, setIsLoading] = useState(false);
+  const [numberRegex, setNumberRegex] = useState("\\d+");
+  const [showMultipleNumbersDialog, setShowMultipleNumbersDialog] = useState(false);
+  const [multipleNumbersHandling, setMultipleNumbersHandling] = useState<"first" | "skip">("first");
+  const [tempProcessedData, setTempProcessedData] = useState<{ name: string; phone: string }[]>([]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -44,7 +55,6 @@ export default function V1() {
       Papa.parse(file, {
         complete: (results) => {
           if (results.data && Array.isArray(results.data) && results.data.length > 0) {
-            // Since we're using header: true, results.data will be an array of objects
             const firstRow = results.data[0] as CSVRow;
             const headers = Object.keys(firstRow);
             
@@ -66,6 +76,67 @@ export default function V1() {
     multiple: false,
   });
 
+  const processPhoneNumbers = (row: CSVRow) => {
+    const cellValue = row[numberColumn];
+    try {
+      const regex = new RegExp(numberRegex, 'g');
+      const matches = cellValue.match(regex);
+      
+      if (!matches) return null;
+      
+      if (matches.length > 1) {
+        if (multipleNumbersHandling === "skip") return null;
+        return matches[0]; // Return first match if using "first" option
+      }
+      
+      return matches[0];
+    } catch (error) {
+      console.error("Regex error:", error);
+      return null;
+    }
+  };
+
+  const prepareNumbers = () => {
+    const processedNumbers = csvData.map(row => {
+      const phoneNumber = processPhoneNumbers(row);
+      if (!phoneNumber) return null;
+
+      return {
+        name: row[nameColumn] || "Unknown",
+        phone: phoneNumber,
+      };
+    }).filter((item): item is { name: string; phone: string } => item !== null);
+
+    if (processedNumbers.length === 0) {
+      toast({
+        title: "Error",
+        description: "No valid phone numbers found after processing",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // Check if any row has multiple numbers
+    const hasMultipleNumbers = csvData.some(row => {
+      const cellValue = row[numberColumn];
+      try {
+        const regex = new RegExp(numberRegex, 'g');
+        const matches = cellValue.match(regex);
+        return matches && matches.length > 1;
+      } catch {
+        return false;
+      }
+    });
+
+    if (hasMultipleNumbers) {
+      setTempProcessedData(processedNumbers);
+      setShowMultipleNumbersDialog(true);
+      return null;
+    }
+
+    return processedNumbers;
+  };
+
   const handleCreateCampaign = async () => {
     if (!campaignName || !adPost || !nameColumn || !numberColumn) {
       toast({
@@ -75,6 +146,9 @@ export default function V1() {
       });
       return;
     }
+
+    const numbers = prepareNumbers();
+    if (!numbers) return;
 
     setIsLoading(true);
     try {
@@ -97,12 +171,6 @@ export default function V1() {
       if (campaignData.status !== "success") {
         throw new Error("Failed to create campaign");
       }
-
-      // Then add numbers to the campaign
-      const numbers = csvData.map(row => ({
-        name: row[nameColumn],
-        phone: row[numberColumn],
-      }));
 
       const numbersResponse = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignData.campaign_id}`, {
         method: 'POST',
@@ -135,6 +203,16 @@ export default function V1() {
     }
   };
 
+  const handleMultipleNumbersDecision = (useFirstNumber: boolean) => {
+    setMultipleNumbersHandling(useFirstNumber ? "first" : "skip");
+    setShowMultipleNumbersDialog(false);
+    
+    if (tempProcessedData.length > 0) {
+      setIsLoading(true);
+      handleCreateCampaign();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -163,6 +241,19 @@ export default function V1() {
                 placeholder="Enter your ad post content"
                 className="min-h-[100px]"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="numberRegex">Phone Number Regex Pattern</Label>
+              <Input
+                id="numberRegex"
+                value={numberRegex}
+                onChange={(e) => setNumberRegex(e.target.value)}
+                placeholder="Enter regex pattern for phone numbers"
+              />
+              <p className="text-sm text-muted-foreground">
+                Use this to extract phone numbers from cells. Default pattern matches any sequence of digits.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -285,6 +376,28 @@ export default function V1() {
           </CardContent>
         </Card>
       </main>
+
+      <Dialog open={showMultipleNumbersDialog} onOpenChange={setShowMultipleNumbersDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Multiple Numbers Detected</DialogTitle>
+            <DialogDescription>
+              Some rows contain multiple phone numbers. How would you like to handle this?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2">
+            <Button onClick={() => handleMultipleNumbersDecision(true)}>
+              Use First Number Only
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleMultipleNumbersDecision(false)}
+            >
+              Skip Multiple Number Rows
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
