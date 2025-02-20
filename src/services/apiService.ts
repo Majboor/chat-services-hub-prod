@@ -1,4 +1,4 @@
-const BASE_URL = "https://whatsappmarket.applytocollege.pk";
+const BASE_URL = "https://magic.applytocollege.pk";
 
 export interface NumberDetails {
   list_name: string;
@@ -200,14 +200,30 @@ export const apiService = {
   },
 
   listAllCampaigns: async (username: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
-    const data = await response.json();
-    return data.campaigns || [];
+    try {
+      const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
+      const data = await response.json();
+      console.log("Campaign list response:", data); // Debug log
+      if (data.status === "success") {
+        return data.campaigns || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      throw error;
+    }
   },
 
   getCampaignNumbers: async (campaignId: string) => {
-    const response = await fetch(`${BASE_URL}/campaign/numbers/${campaignId}`);
-    return await response.json();
+    try {
+      const response = await fetch(`${BASE_URL}/campaign/numbers/${campaignId}`);
+      const data = await response.json();
+      console.log("Campaign numbers response:", data); // Debug log
+      return data;
+    } catch (error) {
+      console.error("Error fetching campaign numbers:", error);
+      throw error;
+    }
   },
 
   getNextNumberForReview: async (campaignId: string) => {
