@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -74,6 +73,17 @@ export default function Campaigns() {
     }
   };
 
+  const isCampaignCompleted = (campaign: CampaignDetails) => {
+    // Campaign is completed if:
+    // 1. Status is explicitly "completed" OR
+    // 2. There are no pending messages AND all messages have been processed
+    return (
+      campaign.status === "completed" ||
+      (campaign.messages_pending <= 0 &&
+        campaign.messages_sent + (campaign.total_numbers - campaign.messages_sent - campaign.messages_pending) === campaign.total_numbers)
+    );
+  };
+
   const activeCampaigns = campaigns.filter(c => c.status !== "completed");
   const completedCampaigns = campaigns.filter(c => c.status === "completed");
 
@@ -105,7 +115,7 @@ export default function Campaigns() {
                 <TableCell className="font-medium">{campaign.name}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {campaign.status === "completed" ? (
+                    {isCampaignCompleted(campaign) ? (
                       <>
                         <Check className="h-4 w-4 text-green-500" />
                         <span>Completed</span>
