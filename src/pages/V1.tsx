@@ -48,6 +48,8 @@ export default function V1() {
   const [showMultipleNumbersDialog, setShowMultipleNumbersDialog] = useState(false);
   const [multipleNumbersHandling, setMultipleNumbersHandling] = useState<"first" | "skip">("first");
   const [tempProcessedData, setTempProcessedData] = useState<{ name: string; phone: string }[]>([]);
+  const [rowSelection, setRowSelection] = useState<"top" | "skip">("top");
+  const [rowCount, setRowCount] = useState<number>(0);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -97,7 +99,17 @@ export default function V1() {
   };
 
   const prepareNumbers = () => {
-    const processedNumbers = csvData.map(row => {
+    let dataToProcess = [...csvData];
+    
+    if (rowCount > 0) {
+      if (rowSelection === "top") {
+        dataToProcess = dataToProcess.slice(0, rowCount);
+      } else {
+        dataToProcess = dataToProcess.slice(rowCount);
+      }
+    }
+
+    const processedNumbers = dataToProcess.map(row => {
       const phoneNumber = processPhoneNumbers(row);
       if (!phoneNumber) return null;
 
@@ -116,7 +128,6 @@ export default function V1() {
       return null;
     }
 
-    // Check if any row has multiple numbers
     const hasMultipleNumbers = csvData.some(row => {
       const cellValue = row[numberColumn];
       try {
@@ -152,7 +163,6 @@ export default function V1() {
 
     setIsLoading(true);
     try {
-      // First create the campaign
       const formData = new FormData();
       formData.append('name', campaignName);
       formData.append('message', adPost);
@@ -336,6 +346,42 @@ export default function V1() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rowSelection">Row Selection</Label>
+                    <select
+                      id="rowSelection"
+                      className="w-full p-2 border rounded"
+                      value={rowSelection}
+                      onChange={(e) => setRowSelection(e.target.value as "top" | "skip")}
+                    >
+                      <option value="top">Use Top N Rows</option>
+                      <option value="skip">Skip Top N Rows</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="rowCount">Number of Rows</Label>
+                    <Input
+                      id="rowCount"
+                      type="number"
+                      min="0"
+                      max={csvData.length}
+                      value={rowCount}
+                      onChange={(e) => setRowCount(Math.max(0, parseInt(e.target.value) || 0))}
+                      placeholder="Enter number of rows (0 for all)"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {rowSelection === "top" 
+                        ? "Will use the first N rows" 
+                        : "Will skip the first N rows"}
+                      {rowCount > 0 && ` (${rowSelection === "top" 
+                        ? `Using rows 1-${Math.min(rowCount, csvData.length)}` 
+                        : `Using rows ${rowCount + 1}-${csvData.length}`})`}
+                    </p>
+                  </div>
+                </div>
+
                 {csvData.length > 0 && (
                   <div className="overflow-x-auto">
                     <Table>
@@ -356,11 +402,12 @@ export default function V1() {
                         ))}
                       </TableBody>
                     </Table>
-                    {csvData.length > 5 && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Showing first 5 rows of {csvData.length} total rows
-                      </p>
-                    )}
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Showing first 5 rows of {csvData.length} total rows
+                      {rowCount > 0 && ` (${rowSelection === "top" 
+                        ? `Will use first ${Math.min(rowCount, csvData.length)} rows` 
+                        : `Will skip first ${rowCount} rows`})`}
+                    </p>
                   </div>
                 )}
               </div>
