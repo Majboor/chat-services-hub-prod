@@ -44,17 +44,12 @@ export default function V1() {
       Papa.parse(file, {
         complete: (results) => {
           if (results.data && Array.isArray(results.data) && results.data.length > 0) {
-            const headers = results.data[0] as string[];
-            const rows = results.data.slice(1).map(row => {
-              const obj: { [key: string]: string } = {};
-              (row as string[]).forEach((cell, index) => {
-                obj[headers[index]] = cell;
-              });
-              return obj;
-            });
+            // Since we're using header: true, results.data will be an array of objects
+            const firstRow = results.data[0] as CSVRow;
+            const headers = Object.keys(firstRow);
             
             setHeaders(headers);
-            setCsvData(rows as CSVRow[]);
+            setCsvData(results.data as CSVRow[]);
           }
         },
         header: true,
