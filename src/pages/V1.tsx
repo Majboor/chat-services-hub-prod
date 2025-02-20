@@ -46,7 +46,7 @@ export default function V1() {
   const [isLoading, setIsLoading] = useState(false);
   const [numberRegex, setNumberRegex] = useState("\\d+");
   const [showMultipleNumbersDialog, setShowMultipleNumbersDialog] = useState(false);
-  const [multipleNumbersHandling, setMultipleNumbersHandling] = useState<"first" | "skip">("first");
+  const [multipleNumbersHandling, setMultipleNumbersHandling] = useState<"first" | "skip" | undefined>(undefined);
   const [tempProcessedData, setTempProcessedData] = useState<{ name: string; phone: string }[]>([]);
   const [rowSelection, setRowSelection] = useState<"top" | "skip">("top");
   const [rowCount, setRowCount] = useState<number>(0);
@@ -120,7 +120,7 @@ export default function V1() {
       }
     });
 
-    if (hasMultipleNumbers && multipleNumbersHandling === "") {
+    if (hasMultipleNumbers && multipleNumbersHandling === undefined) {
       setTempProcessedData([]);
       setShowMultipleNumbersDialog(true);
       return null;
