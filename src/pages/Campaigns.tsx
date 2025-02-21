@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -24,13 +25,18 @@ export default function Campaigns() {
   const [isLoadingNumbers, setIsLoadingNumbers] = useState(false);
   const { toast } = useToast();
 
-  const USERNAME = "Farhana"; // This should come from your auth system
+  const USERNAME = "Farhana";
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const campaigns = await apiService.listAllCampaigns(USERNAME);
-        setCampaigns(campaigns);
+        const response = await fetch(`https://whatsappmarket.applytocollege.pk/campaigns/list?created_by=${USERNAME}`);
+        const data = await response.json();
+        if (data.status === "success") {
+          setCampaigns(data.campaigns);
+        } else {
+          throw new Error("Failed to fetch campaigns");
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -52,12 +58,12 @@ export default function Campaigns() {
       setSelectedCampaign(campaignId);
       setShowNumbersDialog(true);
       setIsLoadingNumbers(true);
-      const response = await apiService.getCampaignNumbers(campaignId);
       
-      // Handle the case where the response has a data property
-      const numbers = response.data || [];
-      if (Array.isArray(numbers)) {
-        setCampaignNumbers(numbers);
+      const response = await fetch(`https://whatsappmarket.applytocollege.pk/campaigns/numbers/${campaignId}`);
+      const data = await response.json();
+      
+      if (data.status === "success" && Array.isArray(data.numbers)) {
+        setCampaignNumbers(data.numbers);
       } else {
         setCampaignNumbers([]);
       }
@@ -74,9 +80,6 @@ export default function Campaigns() {
   };
 
   const isCampaignCompleted = (campaign: CampaignDetails) => {
-    // Campaign is completed if:
-    // 1. Status is explicitly "completed" OR
-    // 2. There are no pending messages AND all messages have been processed
     return (
       campaign.status === "completed" ||
       (campaign.messages_pending <= 0 &&
@@ -84,8 +87,8 @@ export default function Campaigns() {
     );
   };
 
-  const activeCampaigns = campaigns.filter(c => c.status !== "completed");
-  const completedCampaigns = campaigns.filter(c => c.status === "completed");
+  const activeCampaigns = campaigns.filter(c => !isCampaignCompleted(c));
+  const completedCampaigns = campaigns.filter(c => isCampaignCompleted(c));
 
   const CampaignTable = ({ campaigns, title }: { campaigns: CampaignDetails[], title: string }) => (
     <Card className="mb-8">
