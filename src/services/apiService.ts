@@ -1,4 +1,4 @@
-const BASE_URL = "https://magic.applytocollege.pk";
+const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
   list_name: string;
