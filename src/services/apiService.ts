@@ -1,4 +1,3 @@
-
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
@@ -199,24 +198,21 @@ export const apiService = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const text = await response.text(); // Get response as text first
-      console.log("Raw response text:", text);
+      const text = await response.text();
+      const sanitizedText = text.replace(/:(\s*)NaN/g, ':null');
       
       let data;
       try {
-        data = JSON.parse(text);
+        data = JSON.parse(sanitizedText);
       } catch (e) {
         console.error("Failed to parse JSON:", e);
         throw new Error("Invalid JSON response from server");
       }
       
-      console.log("Parsed response:", data);
-
       if (!data || data.status !== "success" || !Array.isArray(data.campaigns)) {
         throw new Error("Invalid response format from server");
       }
 
-      // Process each campaign individually to handle potential data issues
       const processedCampaigns = data.campaigns.map(campaign => ({
         campaign_id: String(campaign.campaign_id || ''),
         created_at: String(campaign.created_at || ''),
@@ -224,14 +220,14 @@ export const apiService = {
         end_time: String(campaign.end_time || ''),
         image_url: String(campaign.image_url || ''),
         message: String(campaign.message || ''),
-        messages_pending: isNaN(Number(campaign.messages_pending)) ? 0 : Number(campaign.messages_pending),
-        messages_sent: isNaN(Number(campaign.messages_sent)) ? 0 : Number(campaign.messages_sent),
-        messages_failed: isNaN(Number(campaign.messages_failed)) ? 0 : Number(campaign.messages_failed),
+        messages_pending: campaign.messages_pending === null ? 0 : Number(campaign.messages_pending) || 0,
+        messages_sent: campaign.messages_sent === null ? 0 : Number(campaign.messages_sent) || 0,
+        messages_failed: campaign.messages_failed === null ? 0 : Number(campaign.messages_failed) || 0,
         name: String(campaign.name || ''),
         start_time: String(campaign.start_time || ''),
         status: String(campaign.status || ''),
         timezone: String(campaign.timezone || ''),
-        total_numbers: isNaN(Number(campaign.total_numbers)) ? 0 : Number(campaign.total_numbers)
+        total_numbers: campaign.total_numbers === null ? 0 : Number(campaign.total_numbers) || 0
       }));
 
       return {
