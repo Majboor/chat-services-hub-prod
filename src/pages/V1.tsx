@@ -30,7 +30,7 @@ interface CSVRow {
   [key: string]: string;
 }
 
-const BASE_URL = "https://magic.applytocollege.pk";
+const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 const USERNAME = "Farhana";
 
 export default function V1() {
@@ -179,20 +179,15 @@ export default function V1() {
     try {
       const formData = new FormData();
       formData.append('name', campaignName);
-      formData.append('created_by', USERNAME);
+      formData.append('message', adPost);
       formData.append('start_time', startTime);
       formData.append('end_time', endTime);
       formData.append('timezone', timezone);
-      formData.append('message', adPost);
+      formData.append('created_by', USERNAME);
 
       if (mediaFile) {
         formData.append('image', mediaFile);
-      } else {
-        const emptyBlob = new Blob([], { type: 'application/octet-stream' });
-        formData.append('image', emptyBlob, 'placeholder.png');
       }
-
-      console.log("Creating campaign with formData:", Object.fromEntries(formData.entries()));
 
       const campaignResponse = await fetch(`${BASE_URL}/campaign/create`, {
         method: 'POST',
@@ -312,7 +307,7 @@ export default function V1() {
               <Input
                 id="media"
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*"
                 onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
               />
             </div>
