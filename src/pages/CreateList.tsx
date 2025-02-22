@@ -243,7 +243,7 @@ export default function CreateList() {
 
     setIsProcessing(true);
     try {
-      await apiService.createNumberList(listName, username);
+      await apiService.createNumberList(listName, USERNAME);
 
       for (const row of csvData) {
         const rawPhoneNumber = row[numberColumnIndex];
@@ -256,7 +256,7 @@ export default function CreateList() {
 
         const numberData: NumberDetails = {
           list_name: listName,
-          owner: username,
+          owner: USERNAME,
           number: cleanedPhoneNumber,
           name: row[selectedHeaders.name] || "",
           interests: row[selectedHeaders.interests] || "",
@@ -286,7 +286,7 @@ export default function CreateList() {
       navigate("/create-campaign", { 
         state: { 
           listName,
-          username
+          username: USERNAME
         }
       });
     } catch (error: any) {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -11,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiService } from "@/services/apiService";
 
+const USERNAME = "Farhana";
+
 interface LocationState {
   listName?: string;
   username?: string;
@@ -19,7 +20,7 @@ interface LocationState {
 export default function CreateCampaign() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { listName, username } = location.state as LocationState || {};
+  const { listName } = location.state as LocationState || {};
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [numberLists, setNumberLists] = useState<string[]>([]);
@@ -34,20 +35,10 @@ export default function CreateCampaign() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
 
   useEffect(() => {
-    if (!username) {
-      toast({
-        title: "Error",
-        description: "No user credentials found. Please create a list first.",
-        variant: "destructive",
-      });
-      navigate("/create-list");
-      return;
-    }
-
     const fetchLists = async () => {
       try {
-        console.log("Fetching number lists for user:", username);
-        const response = await apiService.getNumberLists(username);
+        console.log("Fetching number lists for user:", USERNAME);
+        const response = await apiService.getNumberLists(USERNAME);
         console.log("Fetched lists:", response);
         setNumberLists(response.lists || []);
       } catch (error) {
@@ -61,7 +52,7 @@ export default function CreateCampaign() {
       }
     };
     fetchLists();
-  }, [username, toast, navigate]);
+  }, [toast, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,14 +67,14 @@ export default function CreateCampaign() {
 
     setIsCreating(true);
     try {
-      // Create campaign with the new interface format
+      console.log("Creating campaign with user:", USERNAME);
       const result = await apiService.createCampaign({
         name: campaignData.name,
         message: campaignData.message,
         start_time: campaignData.start_time,
         end_time: campaignData.end_time,
         timezone: campaignData.timezone,
-        created_by: username || "",
+        created_by: USERNAME,
         image: mediaFile
       });
 

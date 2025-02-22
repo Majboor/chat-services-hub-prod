@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +8,6 @@ import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
 import { apiService, CampaignDetails } from "@/services/apiService";
 
-// Updated Campaign interface to match CampaignDetails
 interface Campaign {
   campaign_id: string;
   name: string;
@@ -27,20 +25,22 @@ interface Campaign {
   message: string;
 }
 
+const USERNAME = "Farhana";
+
 export default function ReviewNumbers() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState("");
   const [nextNumber, setNextNumber] = useState<any>(null);
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const username = "Farhana";
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const data = await apiService.listAllCampaigns(username);
-        setCampaigns(data.campaigns); // Now the types match correctly
+        console.log("Fetching campaigns for user:", USERNAME);
+        const data = await apiService.listAllCampaigns(USERNAME);
+        setCampaigns(data.campaigns);
       } catch (error: any) {
         toast({
           title: "Error",
@@ -50,7 +50,7 @@ export default function ReviewNumbers() {
       }
     };
     fetchCampaigns();
-  }, [toast, username]);
+  }, [toast]);
 
   const fetchNextNumber = async () => {
     if (!selectedCampaign) return;
