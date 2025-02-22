@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
@@ -18,6 +19,9 @@ import { apiService } from "@/services/apiService";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
+
+// Add USERNAME constant at the top level
+const USERNAME = "Farhana";
 
 interface CSVRow {
   [key: string]: string;
