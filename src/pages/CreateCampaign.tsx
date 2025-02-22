@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -37,10 +38,18 @@ export default function CreateCampaign() {
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        console.log("Fetching number lists for user:", USERNAME);
         const response = await apiService.getNumberLists(USERNAME);
         console.log("Fetched lists:", response);
-        setNumberLists(response.lists || []);
+        if (response.lists && Array.isArray(response.lists)) {
+          setNumberLists(response.lists);
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to fetch number lists. Please try creating a list first.",
+            variant: "destructive",
+          });
+          navigate("/create-list");
+        }
       } catch (error) {
         console.error("Error fetching number lists:", error);
         toast({
@@ -65,27 +74,46 @@ export default function CreateCampaign() {
       return;
     }
 
+    if (!mediaFile) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCreating(true);
     try {
-      console.log("Creating campaign with user:", USERNAME);
-      const result = await apiService.createCampaign({
-        name: campaignData.name,
-        message: campaignData.message,
-        start_time: campaignData.start_time,
-        end_time: campaignData.end_time,
-        timezone: campaignData.timezone,
-        created_by: USERNAME,
-        image: mediaFile
+      const formData = new FormData();
+      formData.append('name', campaignData.name);
+      formData.append('message', campaignData.message);
+      formData.append('start_time', campaignData.start_time);
+      formData.append('end_time', campaignData.end_time);
+      formData.append('timezone', campaignData.timezone);
+      formData.append('created_by', USERNAME);
+      formData.append('image', mediaFile);
+      formData.append('list_name', campaignData.selectedList);
+
+      const result = await fetch("https://whatsappmarket.applytocollege.pk/campaign/create", {
+        method: 'POST',
+        body: formData,
       });
 
-      if (result.status === "success" && result.campaign_id) {
+      const data = await result.json();
+      console.log("Campaign creation response:", data);
+
+      if (data.status === "success" && data.campaign_id) {
         toast({
           title: "Success",
           description: "Campaign created successfully",
         });
         navigate("/campaigns");
+      } else {
+        throw new Error(data.error || "Failed to create campaign");
       }
     } catch (error: any) {
+      console.error("Campaign creation error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create campaign",
@@ -191,12 +219,13 @@ export default function CreateCampaign() {
               </div>
 
               <div>
-                <Label htmlFor="media">Media (Optional)</Label>
+                <Label htmlFor="media">Media File</Label>
                 <Input
                   id="media"
                   type="file"
                   accept="image/*"
                   onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
+                  required
                 />
               </div>
             </CardContent>
