@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -9,9 +8,11 @@ import { apiService, CampaignDetails } from "@/services/apiService";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const USERNAME = "Farhana";
+
 interface CampaignNumber {
   name: string;
-  phone: string; // Changed from number to string to match API
+  phone: string;
   status: 'sent' | 'pending' | 'failed';
 }
 
@@ -21,20 +22,26 @@ export default function Campaigns() {
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [campaignNumbers, setCampaignNumbers] = useState<CampaignNumber[]>([]);
   const [showNumbersDialog, setShowNumbersDialog] = useState(false);
-  const [isLoadingNumbers, setIsLoadingNumbers] = useState(false);
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>("");
   const { toast } = useToast();
-
-  const USERNAME = "Farhana";
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const campaigns = await apiService.listAllCampaigns(USERNAME);
-        if (Array.isArray(campaigns)) {
-          setCampaigns(campaigns);
+        const response = await apiService.listAllCampaigns(USERNAME);
+        console.log("API Response:", response);
+        if (response.status === "success" && Array.isArray(response.campaigns)) {
+          setCampaigns(response.campaigns);
+        } else {
+          console.error("Invalid response format:", response);
+          toast({
+            title: "Error",
+            description: "Invalid response format from server",
+            variant: "destructive",
+          });
         }
       } catch (error) {
+        console.error("Error fetching campaigns:", error);
         toast({
           title: "Error",
           description: "Failed to load campaigns",
@@ -57,13 +64,23 @@ export default function Campaigns() {
       setIsLoadingNumbers(true);
       
       const response = await apiService.getCampaignNumbers(campaignId);
-      if (response.status === "success" && Array.isArray(response.numbers)) {
-        setCampaignNumbers(response.numbers);
+      console.log("Numbers Response:", response);
+      if (response.status === "success") {
+        setCampaignNumbers(response.numbers.map(number => ({
+          ...number,
+          phone: String(number.phone)
+        })));
         setSelectedCampaignName(response.campaign_name);
       } else {
         setCampaignNumbers([]);
+        toast({
+          title: "Error",
+          description: "Failed to load campaign numbers",
+          variant: "destructive",
+        });
       }
     } catch (error) {
+      console.error("Error loading campaign numbers:", error);
       toast({
         title: "Error",
         description: "Failed to load campaign numbers",
@@ -79,7 +96,7 @@ export default function Campaigns() {
     return (
       campaign.status === "completed" ||
       (campaign.messages_pending <= 0 &&
-        campaign.messages_sent + (campaign.total_numbers - campaign.messages_sent - campaign.messages_pending) === campaign.total_numbers)
+        campaign.messages_sent + campaign.messages_failed >= campaign.total_numbers)
     );
   };
 
@@ -181,6 +198,11 @@ export default function Campaigns() {
             )}
             {completedCampaigns.length > 0 && (
               <CampaignTable campaigns={completedCampaigns} title="Completed Campaigns" />
+            )}
+            {campaigns.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No campaigns found
+              </div>
             )}
           </>
         )}
