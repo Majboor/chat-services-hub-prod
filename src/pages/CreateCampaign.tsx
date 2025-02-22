@@ -25,10 +25,11 @@ export default function CreateCampaign() {
   const [numberLists, setNumberLists] = useState<string[]>([]);
   const [campaignData, setCampaignData] = useState({
     name: "",
-    content: "",
-    goals: "",
-    expectedResponse: "",
+    message: "",
     selectedList: listName || "",
+    start_time: "09:00",
+    end_time: "17:00",
+    timezone: "Asia/Karachi"
   });
   const [mediaFile, setMediaFile] = useState<File | null>(null);
 
@@ -43,11 +44,10 @@ export default function CreateCampaign() {
       return;
     }
 
-    // Fetch available number lists for the specific user
     const fetchLists = async () => {
       try {
         console.log("Fetching number lists for user:", username);
-        const response = await apiService.getNumberLists(username); // Pass username parameter
+        const response = await apiService.getNumberLists(username);
         console.log("Fetched lists:", response);
         setNumberLists(response.lists || []);
       } catch (error) {
@@ -65,7 +65,7 @@ export default function CreateCampaign() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!campaignData.name || !campaignData.content || !campaignData.selectedList) {
+    if (!campaignData.name || !campaignData.message || !campaignData.selectedList) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -76,32 +76,28 @@ export default function CreateCampaign() {
 
     setIsCreating(true);
     try {
-      const formData = new FormData();
-      formData.append("name", campaignData.name);
-      formData.append("content", campaignData.content);
-      formData.append("number_list", campaignData.selectedList);
-      formData.append("owner", username || ""); // Use the passed username
-      if (mediaFile) {
-        formData.append("media", mediaFile);
-      }
-      formData.append("additional_details", JSON.stringify({
-        goals: campaignData.goals,
-        expectedResponse: campaignData.expectedResponse,
-      }));
-
-      const result = await apiService.createCampaign(formData);
-      
-      toast({
-        title: "Success",
-        description: "Campaign created successfully",
+      // Create campaign with the new interface format
+      const result = await apiService.createCampaign({
+        name: campaignData.name,
+        message: campaignData.message,
+        start_time: campaignData.start_time,
+        end_time: campaignData.end_time,
+        timezone: campaignData.timezone,
+        created_by: username || "",
+        image: mediaFile
       });
 
-      // Navigate to review page
-      navigate("/review-numbers");
+      if (result.status === "success" && result.campaign_id) {
+        toast({
+          title: "Success",
+          description: "Campaign created successfully",
+        });
+        navigate("/campaigns");
+      }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create campaign",
         variant: "destructive",
       });
     } finally {
@@ -161,16 +157,44 @@ export default function CreateCampaign() {
               </div>
 
               <div>
-                <Label htmlFor="content">Message Content</Label>
+                <Label htmlFor="message">Message Content</Label>
                 <Textarea
-                  id="content"
-                  value={campaignData.content}
+                  id="message"
+                  value={campaignData.message}
                   onChange={(e) => setCampaignData({
                     ...campaignData,
-                    content: e.target.value
+                    message: e.target.value
                   })}
                   placeholder="Enter message content"
                   className="h-32"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="start_time">Start Time</Label>
+                <Input
+                  id="start_time"
+                  type="time"
+                  value={campaignData.start_time}
+                  onChange={(e) => setCampaignData({
+                    ...campaignData,
+                    start_time: e.target.value
+                  })}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="end_time">End Time</Label>
+                <Input
+                  id="end_time"
+                  type="time"
+                  value={campaignData.end_time}
+                  onChange={(e) => setCampaignData({
+                    ...campaignData,
+                    end_time: e.target.value
+                  })}
                   required
                 />
               </div>
@@ -180,34 +204,8 @@ export default function CreateCampaign() {
                 <Input
                   id="media"
                   type="file"
-                  accept="image/*,video/*"
+                  accept="image/*"
                   onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="goals">Campaign Goals</Label>
-                <Textarea
-                  id="goals"
-                  value={campaignData.goals}
-                  onChange={(e) => setCampaignData({
-                    ...campaignData,
-                    goals: e.target.value
-                  })}
-                  placeholder="Enter campaign goals"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="expectedResponse">Expected Response</Label>
-                <Textarea
-                  id="expectedResponse"
-                  value={campaignData.expectedResponse}
-                  onChange={(e) => setCampaignData({
-                    ...campaignData,
-                    expectedResponse: e.target.value
-                  })}
-                  placeholder="Enter expected response"
                 />
               </div>
             </CardContent>
