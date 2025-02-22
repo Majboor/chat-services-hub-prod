@@ -181,6 +181,24 @@ export default function V1() {
       return;
     }
 
+    if (mediaFile.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image file size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!mediaFile.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Selected file must be an image",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const numbers = prepareNumbers();
     if (!numbers) return;
 
@@ -213,7 +231,9 @@ export default function V1() {
 
       const formattedNumbers = numbers.map(num => ({
         name: num.name,
-        phone: num.phone.startsWith('92') ? num.phone : `92${num.phone}`
+        phone: num.phone.replace(/\D/g, '').startsWith('92') 
+          ? num.phone.replace(/\D/g, '')
+          : `92${num.phone.replace(/\D/g, '')}`
       }));
 
       const numbersResponse = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignData.campaign_id}`, {

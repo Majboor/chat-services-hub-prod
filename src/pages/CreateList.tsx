@@ -193,7 +193,7 @@ export default function CreateList() {
         occupation,
         preferred_contact_time: preferredTime,
         tags,
-        additional_details: additionalDetails,
+        additional_details: additionalDetails
       };
 
       await apiService.addNumberToList(numberData);
@@ -201,10 +201,22 @@ export default function CreateList() {
         title: "Success",
         description: "Number added successfully",
       });
-    } catch (error) {
+      // Reset form
+      setNumber("");
+      setContactName("");
+      setInterests("");
+      setAge("");
+      setLocation("");
+      setGender("");
+      setLanguage("");
+      setOccupation("");
+      setPreferredTime("");
+      setTags("");
+      setAdditionalDetails("");
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to add number",
         variant: "destructive",
       });
     }

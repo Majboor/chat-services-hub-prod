@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import Navbar from "@/components/Navbar";
-import { SideDrawer } from "@/components/SideDrawer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import Navbar from "@/components/Navbar";
+import { SideDrawer } from "@/components/SideDrawer";
 import { apiService } from "@/services/apiService";
-import { CheckIcon, XIcon } from "lucide-react";
-import { sanitizeCampaignName } from "@/utils/sanitize";
 
 interface Campaign {
+  campaign_id: string;
   name: string;
   total: number;
   pending: number;
@@ -16,83 +17,82 @@ interface Campaign {
   failed: number;
 }
 
-interface NumberDetails {
-  campaign: string;
-  number: string;
-  notes: string;
-  number_details: any;
-  remaining: number;
-  sent_at?: string;
-  status: string;
-}
-
 export default function ReviewNumbers() {
-  const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("");
-  const [currentNumber, setCurrentNumber] = useState<NumberDetails | null>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState("");
+  const [nextNumber, setNextNumber] = useState<any>(null);
+  const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [userCredits, setUserCredits] = useState(100);
-  const [username, setUsername] = useState("Farhana");
+  const { toast } = useToast();
+  const username = "Farhana";
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
         const data = await apiService.listAllCampaigns(username);
-        setCampaigns(data.campaigns);
-      } catch (error) {
+        // Transform CampaignDetails[] to Campaign[]
+        const transformedCampaigns: Campaign[] = data.campaigns.map(camp => ({
+          campaign_id: camp.campaign_id,
+          name: camp.name,
+          total: camp.total_numbers,
+          pending: camp.messages_pending,
+          sent: camp.messages_sent,
+          failed: camp.messages_failed
+        }));
+        setCampaigns(transformedCampaigns);
+      } catch (error: any) {
         toast({
           title: "Error",
-          description: error.message,
+          description: error.message || "Failed to fetch campaigns",
           variant: "destructive",
         });
       }
     };
     fetchCampaigns();
-  }, [username]);
+  }, [toast, username]);
 
-  const loadNextNumber = async () => {
+  const fetchNextNumber = async () => {
     if (!selectedCampaign) return;
-    
     setIsLoading(true);
     try {
-      const sanitizedCampaign = sanitizeCampaignName(selectedCampaign);
-      console.log("Requesting next number for campaign:", sanitizedCampaign);
-      const number = await apiService.getNextNumberForReview(sanitizedCampaign);
-      setCurrentNumber(number);
+      const data = await apiService.getNextNumberForReview(selectedCampaign);
+      setNextNumber(data.data);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to fetch next number",
         variant: "destructive",
       });
+      setNextNumber(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleReview = async (approved: boolean) => {
-    if (!currentNumber || !selectedCampaign) return;
+  useEffect(() => {
+    fetchNextNumber();
+  }, [selectedCampaign, toast]);
 
+  const handleApprove = async () => {
+    if (!nextNumber) return;
     setIsLoading(true);
     try {
-      const sanitizedCampaign = sanitizeCampaignName(selectedCampaign);
       await apiService.updateReview({
-        campaign_id: sanitizedCampaign,
-        number: currentNumber.number,
-        approved,
-        notes: approved ? "Approved" : "Rejected",
+        campaign_id: selectedCampaign,
+        number: nextNumber.phone,
+        approved: true,
+        notes: notes,
       });
-
-      if (approved) {
-        setUserCredits(prev => prev + 0.5);
-      }
-
-      await loadNextNumber();
+      toast({
+        title: "Success",
+        description: "Number approved",
+      });
+      setNotes("");
+      fetchNextNumber();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to approve number",
         variant: "destructive",
       });
     } finally {
@@ -100,107 +100,101 @@ export default function ReviewNumbers() {
     }
   };
 
-  const handleCampaignSelect = (campaignName: string) => {
-    const sanitizedName = sanitizeCampaignName(campaignName);
-    setSelectedCampaign(sanitizedName);
-    setCurrentNumber(null);
+  const handleReject = async () => {
+    if (!nextNumber) return;
+    setIsLoading(true);
+    try {
+      await apiService.updateReview({
+        campaign_id: selectedCampaign,
+        number: nextNumber.phone,
+        approved: false,
+        notes: notes,
+      });
+      toast({
+        title: "Success",
+        description: "Number rejected",
+      });
+      setNotes("");
+      fetchNextNumber();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject number",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <SideDrawer />
       <div className="container mx-auto py-6 px-4">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Review Numbers</h1>
-          <div className="text-lg font-semibold">
-            Credits: {userCredits.toFixed(1)}
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold mb-6">Review Numbers</h1>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Select Campaign</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={selectedCampaign}
-                  onChange={(e) => handleCampaignSelect(e.target.value)}
-                >
-                  <option value="">Select a campaign</option>
-                  {campaigns.map((campaign) => (
-                    <option key={campaign.name} value={campaign.name}>
-                      {campaign.name} ({campaign.pending} pending)
-                    </option>
-                  ))}
-                </select>
-
-                {selectedCampaign && !currentNumber && (
-                  <Button 
-                    onClick={loadNextNumber}
-                    disabled={isLoading}
-                    className="w-full"
+              <div className="space-y-2">
+                {campaigns.map((campaign) => (
+                  <Button
+                    key={campaign.campaign_id}
+                    variant={selectedCampaign === campaign.campaign_id ? "secondary" : "outline"}
+                    className="w-full justify-start"
+                    onClick={() => setSelectedCampaign(campaign.campaign_id)}
                   >
-                    Start Reviewing
+                    {campaign.name}
                   </Button>
-                )}
+                ))}
               </div>
             </CardContent>
           </Card>
 
-          {currentNumber && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Review Number</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold mb-4">
-                      {currentNumber.number}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Remaining: {currentNumber.remaining}
-                    </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Number for Review</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p>Loading...</p>
+              ) : nextNumber ? (
+                <>
+                  <div>
+                    <Label>Phone</Label>
+                    <p className="font-bold">{nextNumber.phone}</p>
                   </div>
-
-                  {currentNumber.number_details && (
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {Object.entries(currentNumber.number_details).map(([key, value]) => (
-                        <div key={key}>
-                          <span className="font-medium">{key}: </span>
-                          <span>{String(value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex gap-4 justify-center">
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleReview(false)}
-                      disabled={isLoading}
-                    >
-                      <XIcon className="mr-2" />
+                  <div>
+                    <Label>Message</Label>
+                    <p>{nextNumber.message}</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Add notes here"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-between">
+                    <Button onClick={handleReject} variant="destructive" disabled={isLoading}>
                       Reject
                     </Button>
-                    <Button
-                      variant="default"
-                      onClick={() => handleReview(true)}
-                      disabled={isLoading}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckIcon className="mr-2" />
-                      Approve (+0.5 credits)
+                    <Button onClick={handleApprove} disabled={isLoading}>
+                      Approve
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </>
+              ) : (
+                <p>No numbers to review for this campaign.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
