@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -30,12 +29,9 @@ export default function Campaigns() {
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const response = await fetch(`https://whatsappmarket.applytocollege.pk/campaigns/list?created_by=${USERNAME}`);
-        const data = await response.json();
-        if (data.status === "success") {
-          setCampaigns(data.campaigns);
-        } else {
-          throw new Error("Failed to fetch campaigns");
+        const campaigns = await apiService.listAllCampaigns(USERNAME);
+        if (Array.isArray(campaigns)) {
+          setCampaigns(campaigns);
         }
       } catch (error) {
         toast({
@@ -59,11 +55,9 @@ export default function Campaigns() {
       setShowNumbersDialog(true);
       setIsLoadingNumbers(true);
       
-      const response = await fetch(`https://whatsappmarket.applytocollege.pk/campaigns/numbers/${campaignId}`);
-      const data = await response.json();
-      
-      if (data.status === "success" && Array.isArray(data.numbers)) {
-        setCampaignNumbers(data.numbers);
+      const response = await apiService.getCampaignNumbers(campaignId);
+      if (response && response.numbers && Array.isArray(response.numbers)) {
+        setCampaignNumbers(response.numbers);
       } else {
         setCampaignNumbers([]);
       }
