@@ -20,7 +20,7 @@ interface CampaignNumber {
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingNumbers, setIsLoadingNumbers] = useState(false); // Added this line
+  const [isLoadingNumbers, setIsLoadingNumbers] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [campaignNumbers, setCampaignNumbers] = useState<CampaignNumber[]>([]);
   const [showNumbersDialog, setShowNumbersDialog] = useState(false);
@@ -172,7 +172,7 @@ export default function Campaigns() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <X className="h-4 w-4 text-red-500" />
-                    {campaign.total_numbers - campaign.messages_sent - campaign.messages_pending}
+                    {campaign.messages_failed || 0}
                   </div>
                 </TableCell>
                 <TableCell>{campaign.total_numbers}</TableCell>
