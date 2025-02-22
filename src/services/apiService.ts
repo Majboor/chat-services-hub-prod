@@ -1,3 +1,4 @@
+
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
@@ -193,40 +194,39 @@ export const apiService = {
   listAllCampaigns: async (username: string): Promise<{ status: string; campaigns: CampaignDetails[] }> => {
     try {
       const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const data = await response.json();
-      console.log("Campaigns API Response:", data);
-      
-      if (data.status !== "success") {
-        throw new Error(data.error || "Failed to list campaigns");
+      console.log("Raw API Response:", data);
+
+      if (!data || data.status !== "success" || !Array.isArray(data.campaigns)) {
+        throw new Error("Invalid response format from server");
       }
-      
-      if (!Array.isArray(data.campaigns)) {
-        throw new Error("Invalid campaigns data format");
-      }
-      
-      const sanitizedCampaigns = data.campaigns.map(campaign => ({
-        campaign_id: campaign.campaign_id || '',
-        created_at: campaign.created_at || '',
-        created_by: campaign.created_by || '',
-        end_time: campaign.end_time || '',
-        image_url: campaign.image_url || '',
-        message: campaign.message || '',
-        messages_pending: Number(campaign.messages_pending) || 0,
-        messages_sent: Number(campaign.messages_sent) || 0,
-        messages_failed: Number(campaign.messages_failed) || 0,
-        name: campaign.name || '',
-        start_time: campaign.start_time || '',
-        status: campaign.status || '',
-        timezone: campaign.timezone || '',
-        total_numbers: Number(campaign.total_numbers) || 0
+
+      // Process each campaign individually to handle potential data issues
+      const processedCampaigns = data.campaigns.map(campaign => ({
+        campaign_id: String(campaign.campaign_id || ''),
+        created_at: String(campaign.created_at || ''),
+        created_by: String(campaign.created_by || ''),
+        end_time: String(campaign.end_time || ''),
+        image_url: String(campaign.image_url || ''),
+        message: String(campaign.message || ''),
+        messages_pending: isNaN(Number(campaign.messages_pending)) ? 0 : Number(campaign.messages_pending),
+        messages_sent: isNaN(Number(campaign.messages_sent)) ? 0 : Number(campaign.messages_sent),
+        messages_failed: isNaN(Number(campaign.messages_failed)) ? 0 : Number(campaign.messages_failed),
+        name: String(campaign.name || ''),
+        start_time: String(campaign.start_time || ''),
+        status: String(campaign.status || ''),
+        timezone: String(campaign.timezone || ''),
+        total_numbers: isNaN(Number(campaign.total_numbers)) ? 0 : Number(campaign.total_numbers)
       }));
-      
+
       return {
         status: "success",
-        campaigns: sanitizedCampaigns
+        campaigns: processedCampaigns
       };
     } catch (error) {
       console.error("Error in listAllCampaigns:", error);

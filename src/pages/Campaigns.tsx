@@ -29,20 +29,9 @@ export default function Campaigns() {
   const fetchCampaigns = async () => {
     try {
       setIsLoading(true);
-      console.log("Fetching campaigns for:", USERNAME);
       const response = await apiService.listAllCampaigns(USERNAME);
-      console.log("Campaigns response:", response);
-      
-      if (response.status === "success" && Array.isArray(response.campaigns)) {
-        setCampaigns(response.campaigns);
-      } else {
-        console.error("Invalid response format:", response);
-        toast({
-          title: "Error",
-          description: "Invalid response format from server",
-          variant: "destructive",
-        });
-      }
+      console.log("Processed campaigns response:", response);
+      setCampaigns(response.campaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
       toast({
@@ -50,7 +39,7 @@ export default function Campaigns() {
         description: "Failed to load campaigns. Please try again later.",
         variant: "destructive",
       });
-      setCampaigns([]); // Reset campaigns on error
+      setCampaigns([]);
     } finally {
       setIsLoading(false);
     }
