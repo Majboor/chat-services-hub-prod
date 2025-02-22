@@ -85,6 +85,7 @@ export const apiService = {
     timezone: string;
     created_by: string;
     image: File | null;
+    list_name: string;
   }) => {
     if (!data.image) {
       throw new Error("Image file is required");
@@ -98,6 +99,7 @@ export const apiService = {
     formData.append('timezone', data.timezone);
     formData.append('created_by', data.created_by);
     formData.append('image', data.image);
+    formData.append('list_name', data.list_name);
 
     const response = await fetch(`${BASE_URL}/campaign/create`, {
       method: 'POST',
@@ -105,6 +107,7 @@ export const apiService = {
     });
     
     const responseData = await response.json();
+    console.log("API Response:", responseData);
     
     if (responseData.status !== "success") {
       throw new Error(responseData.error || "Failed to create campaign");

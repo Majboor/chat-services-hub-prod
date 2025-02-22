@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -85,32 +84,27 @@ export default function CreateCampaign() {
 
     setIsCreating(true);
     try {
-      const formData = new FormData();
-      formData.append('name', campaignData.name);
-      formData.append('message', campaignData.message);
-      formData.append('start_time', campaignData.start_time);
-      formData.append('end_time', campaignData.end_time);
-      formData.append('timezone', campaignData.timezone);
-      formData.append('created_by', USERNAME);
-      formData.append('image', mediaFile);
-      formData.append('list_name', campaignData.selectedList);
-
-      const result = await fetch("https://whatsappmarket.applytocollege.pk/campaign/create", {
-        method: 'POST',
-        body: formData,
+      const result = await apiService.createCampaign({
+        name: campaignData.name,
+        message: campaignData.message,
+        start_time: campaignData.start_time,
+        end_time: campaignData.end_time,
+        timezone: campaignData.timezone,
+        created_by: USERNAME,
+        image: mediaFile,
+        list_name: campaignData.selectedList
       });
 
-      const data = await result.json();
-      console.log("Campaign creation response:", data);
+      console.log("Campaign creation response:", result);
 
-      if (data.status === "success" && data.campaign_id) {
+      if (result.status === "success" && result.campaign_id) {
         toast({
           title: "Success",
           description: "Campaign created successfully",
         });
         navigate("/campaigns");
       } else {
-        throw new Error(data.error || "Failed to create campaign");
+        throw new Error(result.error || "Failed to create campaign");
       }
     } catch (error: any) {
       console.error("Campaign creation error:", error);
