@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 interface CampaignNumber {
   name: string;
-  phone: number;
+  phone: string; // Changed from number to string to match API
   status: 'sent' | 'pending' | 'failed';
 }
 
