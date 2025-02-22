@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
@@ -80,20 +79,19 @@ export default function TestAPI() {
         addLog(`✅ Added number ${i} to list`);
       }
 
-      // Create campaign with media file
+      // Create campaign
       addLog("➡️ Creating campaign...");
-      const formData = new FormData();
-      const sanitizedCampaignName = sanitizeCampaignName(data.campaignName);
-      formData.append("name", sanitizedCampaignName);
-      formData.append("username", data.username);
-      formData.append("number_list", sanitizedListName);
-      formData.append("content", "Test campaign message");
-      
-      if (fileInputRef.current?.files?.[0]) {
-        formData.append("media", fileInputRef.current.files[0]);
-      }
-      
-      const campaignResponse = await apiService.createCampaign(formData);
+      const file = fileInputRef.current?.files?.[0] || null;
+      const campaignResponse = await apiService.createCampaign({
+        name: data.campaignName,
+        message: "Test campaign message",
+        start_time: "09:00",
+        end_time: "17:00",
+        timezone: "Asia/Karachi",
+        created_by: data.username,
+        image: file
+      });
+
       const campaignId = campaignResponse.campaign_id;
       if (!campaignId) {
         throw new Error("Campaign creation failed - no campaign ID returned");
@@ -113,7 +111,7 @@ export default function TestAPI() {
       if (firstNumber.number) {
         await apiService.processNumber({
           campaign_id: campaignId,
-          number: `+12345678901`, // Fixed number to match bash script exactly
+          number: `+12345678901`,
           status: "sent",
           notes: "Interested in product",
           feedback: {
@@ -130,7 +128,7 @@ export default function TestAPI() {
       if (secondNumber.number) {
         await apiService.processNumber({
           campaign_id: campaignId,
-          number: `+12345678902`, // Fixed number to match bash script exactly
+          number: `+12345678902`,
           status: "failed",
           notes: "Number not reachable",
           feedback: {
@@ -149,7 +147,7 @@ export default function TestAPI() {
       if (reviewNumber1.number) {
         await apiService.updateReview({
           campaign_id: campaignId,
-          number: `+12345678901`, // Fixed number to match bash script exactly
+          number: `+12345678901`,
           approved: true,
           notes: "Good response, follow up needed"
         });
@@ -161,7 +159,7 @@ export default function TestAPI() {
       if (reviewNumber2.number) {
         await apiService.updateReview({
           campaign_id: campaignId,
-          number: `+12345678902`, // Fixed number to match bash script exactly
+          number: `+12345678902`,
           approved: false,
           notes: "Invalid number, remove from list"
         });
