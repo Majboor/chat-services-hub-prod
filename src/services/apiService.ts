@@ -1,3 +1,4 @@
+
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
 export interface NumberDetails {
@@ -25,6 +26,7 @@ export interface CampaignDetails {
   message: string;
   messages_pending: number;
   messages_sent: number;
+  messages_failed: number;
   name: string;
   start_time: string;
   status: string;
@@ -33,91 +35,50 @@ export interface CampaignDetails {
 }
 
 export interface CampaignStatus {
-  failed: number;
-  pending: number;
-  sent: number;
-  total: number;
-  details?: Array<{
-    campaign_id: string;
-    number: string;
-    status: 'pending' | 'sent' | 'failed';
-    notes?: string;
-    sent_at?: string;
-    error_message?: string;
-    additional_data?: string;
-    number_details?: string;
-  }>;
+  status: string;
+  campaign: {
+    name: string;
+    total_numbers: number;
+    messages_sent: number;
+    messages_pending: number;
+    status: string;
+    time_window: string;
+  };
 }
 
 export interface CampaignNumberResponse {
+  status: string;
   campaign_name: string;
+  total_numbers: number;
   numbers: Array<{
     name: string;
-    phone: number;
+    phone: string;
     status: 'sent' | 'pending' | 'failed';
   }>;
+}
+
+export interface NextNumberResponse {
   status: string;
-  total_numbers: number;
+  data: {
+    name: string;
+    phone: string;
+    message: string;
+    image_url: string;
+  };
+}
+
+export interface UpdateStatusResponse {
+  status: string;
+  campaign_stats: {
+    messages_sent: number;
+    messages_failed: number;
+    messages_pending: number;
+    campaign_status: string;
+  };
 }
 
 export const apiService = {
-  // Auth
-  registerUser: async (username: string, password: string, role: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, role }),
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || "Registration failed");
-      }
-
-      return data;
-    } catch (error: any) {
-      if (error.message === "Username already exists") {
-        throw new Error("This username is already taken. Please try a different one.");
-      }
-      throw error;
-    }
-  },
-
-  // Number Lists
-  createNumberList: async (list_name: string, username: string) => {
-    const response = await fetch(`${BASE_URL}/numbers/create-list`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ list_name, username }),
-    });
-    return await response.json();
-  },
-
-  addNumberToList: async (data: {
-    list_name: string;
-    username: string;
-    number: string;
-    name: string;
-    interests: string;
-    age: string;
-    location: string;
-    gender: string;
-    language: string;
-    occupation: string;
-    preferred_contact_time: string;
-    tags: string;
-  }) => {
-    const response = await fetch(`${BASE_URL}/numbers/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return await response.json();
-  },
-
-  // Campaigns
+  // Campaign Creation
   createCampaign: async (data: {
     name: string;
     message: string;
@@ -127,7 +88,6 @@ export const apiService = {
     created_by: string;
     image: File | null;
   }) => {
-    console.log("Creating campaign with data:", data);
     const formData = new FormData();
     formData.append('name', data.name);
     formData.append('message', data.message);
@@ -138,10 +98,6 @@ export const apiService = {
     
     if (data.image) {
       formData.append('image', data.image);
-    } else {
-      // If no image is provided, send an empty file to match the API requirement
-      const emptyBlob = new Blob([], { type: 'application/octet-stream' });
-      formData.append('image', emptyBlob, 'placeholder.png');
     }
 
     const response = await fetch(`${BASE_URL}/campaign/create`, {
@@ -150,21 +106,16 @@ export const apiService = {
     });
     
     const responseData = await response.json();
-    console.log("Campaign creation response:", responseData);
     
     if (responseData.status !== "success") {
-      throw new Error(responseData.message || "Failed to create campaign");
+      throw new Error(responseData.error || "Failed to create campaign");
     }
     
-    return {
-      campaign_id: responseData.campaign_id,
-      image_url: responseData.image_url,
-      status: responseData.status
-    };
+    return responseData;
   },
 
+  // Add Numbers to Campaign
   addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>) => {
-    console.log("Adding numbers to campaign:", campaignId, numbers);
     const response = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignId}`, {
       method: 'POST',
       headers: {
@@ -174,160 +125,85 @@ export const apiService = {
     });
     
     const data = await response.json();
-    console.log("Add numbers response:", data);
     
     if (data.status !== "success") {
-      throw new Error(data.message || "Failed to add numbers to campaign");
+      throw new Error(data.error || "Failed to add numbers to campaign");
     }
     
     return data;
   },
 
-  executeCampaign: async (campaignId: string, batch_size: number, offset: number) => {
-    console.log("Executing campaign:", campaignId);
-    const response = await fetch(`${BASE_URL}/campaign/execute/${campaignId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ batch_size, offset }),
-    });
+  // Check Campaign Status
+  getCampaignStatus: async (campaignId: string): Promise<CampaignStatus> => {
+    const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch campaign status');
+    }
     const data = await response.json();
-    console.log("Campaign execution response:", data);
+    if (data.status !== "success") {
+      throw new Error(data.error || "Failed to get campaign status");
+    }
     return data;
   },
 
-  listPendingCampaigns: async () => {
-    try {
-      const response = await fetch(`${BASE_URL}/campaign/list-pending`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch pending campaigns');
-      }
-      const data = await response.text();
-      try {
-        return JSON.parse(data);
-      } catch {
-        return { pending: 0 }; // Default value if parsing fails
-      }
-    } catch (error: any) {
-      console.error("Error listing pending campaigns:", error);
-      throw error;
+  // Get Next Number from Campaign
+  getNextNumber: async (campaignId: string): Promise<NextNumberResponse> => {
+    const response = await fetch(`${BASE_URL}/campaign/numbers/${campaignId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch next number');
     }
-  },
-
-  getNextNumber: async (campaignId: string) => {
-    console.log("Getting next number for campaign:", campaignId);
-    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/next-number`);
     const data = await response.json();
-    console.log("Next number response:", data);
+    if (data.status !== "success") {
+      throw new Error(data.error || "Failed to get next number");
+    }
     return data;
   },
 
-  processNumber: async (data: {
-    campaign_id: string;
-    number: string;
-    status: string;
-    notes: string;
-    feedback: Record<string, any>;
-  }) => {
-    console.log("Processing number for campaign:", data.campaign_id);
-    const response = await fetch(`${BASE_URL}/campaign/process-number`, {
+  // Update Message Status
+  updateMessageStatus: async (campaignId: string, phone: string, status: 'sent' | 'failed'): Promise<UpdateStatusResponse> => {
+    const response = await fetch(`${BASE_URL}/campaign/update_status/${campaignId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone, status }),
     });
-    const responseData = await response.json();
-    console.log("Process number response:", responseData);
-    return responseData;
-  },
-
-  getCampaignStatus: async (campaignId: string): Promise<CampaignStatus | { message: string }> => {
-    console.log("Getting status for campaign:", campaignId);
-    try {
-      const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch campaign status');
-      }
-      const text = await response.text();
-      try {
-        const jsonData = JSON.parse(text);
-        console.log("Campaign status parsed successfully:", jsonData);
-        return jsonData;
-      } catch (parseError) {
-        console.log("Campaign status is not JSON, returning as message:", text);
-        return { message: text };
-      }
-    } catch (error) {
-      console.error("Error getting campaign status:", error);
-      throw error;
+    
+    if (!response.ok) {
+      throw new Error('Failed to update message status');
     }
-  },
-
-  listAllCampaigns: async (username: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
-      const data = await response.json();
-      console.log("Campaign list response:", data); // Debug log
-      if (data.status === "success") {
-        return data.campaigns || [];
-      }
-      return [];
-    } catch (error) {
-      console.error("Error fetching campaigns:", error);
-      throw error;
-    }
-  },
-
-  getCampaignNumbers: async (campaignId: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/campaign/all_numbers/${campaignId}`);
-      const data = await response.json();
-      console.log("Campaign numbers response:", data);
-      return data;
-    } catch (error) {
-      console.error("Error fetching campaign numbers:", error);
-      throw error;
-    }
-  },
-
-  getNextNumberForReview: async (campaignId: string) => {
-    console.log("Getting next review number for campaign:", campaignId);
-    const response = await fetch(`${BASE_URL}/campaign/${campaignId}/review-next`);
+    
     const data = await response.json();
-    console.log("Next review number response:", data);
+    if (data.status !== "success") {
+      throw new Error(data.error || "Failed to update status");
+    }
+    
     return data;
   },
 
-  updateReview: async (data: {
-    campaign_id: string;
-    number: string;
-    approved: boolean;
-    notes: string;
-  }) => {
-    console.log("Updating review for campaign:", data.campaign_id);
-    const response = await fetch(`${BASE_URL}/campaign/update-review`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const responseData = await response.json();
-    console.log("Update review response:", responseData);
-    return responseData;
+  // List All Campaign Numbers
+  getCampaignNumbers: async (campaignId: string): Promise<CampaignNumberResponse> => {
+    const response = await fetch(`${BASE_URL}/campaign/all_numbers/${campaignId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch campaign numbers');
+    }
+    const data = await response.json();
+    if (data.status !== "success") {
+      throw new Error(data.error || "Failed to get campaign numbers");
+    }
+    return data;
   },
 
-  getNumberLists: async (username: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/numbers/lists?username=${username}`);
-      const data = await response.json();
-      
-      if (data.message === "No numbers found") {
-        console.log("No lists found for user:", username);
-        return { lists: [] };
-      }
-      
-      console.log("Available number lists for user:", username, data);
-      return data;
-    } catch (error) {
-      console.error("Error fetching number lists:", error);
-      throw error;
+  // List User Campaigns
+  listAllCampaigns: async (username: string): Promise<{ campaigns: CampaignDetails[] }> => {
+    const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch campaigns');
     }
+    const data = await response.json();
+    if (data.status !== "success") {
+      throw new Error(data.error || "Failed to list campaigns");
+    }
+    return data;
   },
 };
