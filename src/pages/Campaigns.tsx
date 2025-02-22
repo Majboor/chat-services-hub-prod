@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -31,12 +32,16 @@ export default function Campaigns() {
       setIsLoading(true);
       const response = await apiService.listAllCampaigns(USERNAME);
       console.log("Processed campaigns response:", response);
-      setCampaigns(response.campaigns);
+      if (Array.isArray(response.campaigns)) {
+        setCampaigns(response.campaigns);
+      } else {
+        throw new Error("Invalid campaigns data");
+      }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
       toast({
         title: "Error",
-        description: "Failed to load campaigns. Please try again later.",
+        description: `Failed to load campaigns: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
       setCampaigns([]);

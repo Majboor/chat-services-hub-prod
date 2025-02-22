@@ -199,8 +199,18 @@ export const apiService = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.json();
-      console.log("Raw API Response:", data);
+      const text = await response.text(); // Get response as text first
+      console.log("Raw response text:", text);
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        throw new Error("Invalid JSON response from server");
+      }
+      
+      console.log("Parsed response:", data);
 
       if (!data || data.status !== "success" || !Array.isArray(data.campaigns)) {
         throw new Error("Invalid response format from server");
