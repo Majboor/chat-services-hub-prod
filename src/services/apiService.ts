@@ -49,6 +49,17 @@ export interface CampaignStatus {
   }>;
 }
 
+export interface CampaignNumberResponse {
+  campaign_name: string;
+  numbers: Array<{
+    name: string;
+    phone: number;
+    status: 'sent' | 'pending' | 'failed';
+  }>;
+  status: string;
+  total_numbers: number;
+}
+
 export const apiService = {
   // Auth
   registerUser: async (username: string, password: string, role: string) => {
@@ -216,9 +227,9 @@ export const apiService = {
 
   getCampaignNumbers: async (campaignId: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/campaign/numbers/${campaignId}`);
+      const response = await fetch(`${BASE_URL}/campaign/all_numbers/${campaignId}`);
       const data = await response.json();
-      console.log("Campaign numbers response:", data); // Debug log
+      console.log("Campaign numbers response:", data);
       return data;
     } catch (error) {
       console.error("Error fetching campaign numbers:", error);

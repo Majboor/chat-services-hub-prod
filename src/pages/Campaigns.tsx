@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -9,10 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CampaignNumber {
-  number: string;
   name: string;
+  phone: number;
   status: 'sent' | 'pending' | 'failed';
-  sent_at?: string;
 }
 
 export default function Campaigns() {
@@ -22,6 +22,7 @@ export default function Campaigns() {
   const [campaignNumbers, setCampaignNumbers] = useState<CampaignNumber[]>([]);
   const [showNumbersDialog, setShowNumbersDialog] = useState(false);
   const [isLoadingNumbers, setIsLoadingNumbers] = useState(false);
+  const [selectedCampaignName, setSelectedCampaignName] = useState<string>("");
   const { toast } = useToast();
 
   const USERNAME = "Farhana";
@@ -56,8 +57,9 @@ export default function Campaigns() {
       setIsLoadingNumbers(true);
       
       const response = await apiService.getCampaignNumbers(campaignId);
-      if (response && response.numbers && Array.isArray(response.numbers)) {
+      if (response.status === "success" && Array.isArray(response.numbers)) {
         setCampaignNumbers(response.numbers);
+        setSelectedCampaignName(response.campaign_name);
       } else {
         setCampaignNumbers([]);
       }
@@ -186,7 +188,7 @@ export default function Campaigns() {
         <Dialog open={showNumbersDialog} onOpenChange={setShowNumbersDialog}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Campaign Numbers</DialogTitle>
+              <DialogTitle>{selectedCampaignName || 'Campaign Numbers'}</DialogTitle>
             </DialogHeader>
             {isLoadingNumbers ? (
               <div className="flex justify-center items-center h-32">
@@ -199,14 +201,13 @@ export default function Campaigns() {
                     <TableHead>Name</TableHead>
                     <TableHead>Number</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Sent At</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {campaignNumbers.map((number, index) => (
                     <TableRow key={index}>
                       <TableCell>{number.name}</TableCell>
-                      <TableCell>{number.number}</TableCell>
+                      <TableCell>{number.phone}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {number.status === 'sent' ? (
@@ -227,7 +228,6 @@ export default function Campaigns() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{number.sent_at || '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
