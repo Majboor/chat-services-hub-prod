@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,15 +7,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import { SideDrawer } from "@/components/SideDrawer";
-import { apiService } from "@/services/apiService";
+import { apiService, CampaignDetails } from "@/services/apiService";
 
+// Updated Campaign interface to match CampaignDetails
 interface Campaign {
   campaign_id: string;
   name: string;
-  total: number;
-  pending: number;
-  sent: number;
-  failed: number;
+  total_numbers: number;
+  messages_pending: number;
+  messages_sent: number;
+  messages_failed: number;
+  status: string;
+  created_at: string;
+  created_by: string;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  image_url: string;
+  message: string;
 }
 
 export default function ReviewNumbers() {
@@ -30,16 +40,7 @@ export default function ReviewNumbers() {
     const fetchCampaigns = async () => {
       try {
         const data = await apiService.listAllCampaigns(username);
-        // Transform CampaignDetails[] to Campaign[]
-        const transformedCampaigns: Campaign[] = data.campaigns.map(camp => ({
-          campaign_id: camp.campaign_id,
-          name: camp.name,
-          total: camp.total_numbers,
-          pending: camp.messages_pending,
-          sent: camp.messages_sent,
-          failed: camp.messages_failed
-        }));
-        setCampaigns(transformedCampaigns);
+        setCampaigns(data.campaigns); // Now the types match correctly
       } catch (error: any) {
         toast({
           title: "Error",

@@ -254,9 +254,9 @@ export default function CreateList() {
           continue;
         }
 
-        const numberData = {
+        const numberData: NumberDetails = {
           list_name: listName,
-          username: username,
+          owner: username,
           number: cleanedPhoneNumber,
           name: row[selectedHeaders.name] || "",
           interests: row[selectedHeaders.interests] || "",
