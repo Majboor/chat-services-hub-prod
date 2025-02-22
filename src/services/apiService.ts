@@ -118,18 +118,69 @@ export const apiService = {
   },
 
   // Campaigns
-  createCampaign: async (formData: FormData) => {
-    console.log("Creating campaign with name:", formData.get('name'));
+  createCampaign: async (data: {
+    name: string;
+    message: string;
+    start_time: string;
+    end_time: string;
+    timezone: string;
+    created_by: string;
+    image: File | null;
+  }) => {
+    console.log("Creating campaign with data:", data);
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('message', data.message);
+    formData.append('start_time', data.start_time);
+    formData.append('end_time', data.end_time);
+    formData.append('timezone', data.timezone);
+    formData.append('created_by', data.created_by);
+    
+    if (data.image) {
+      formData.append('image', data.image);
+    } else {
+      // If no image is provided, send an empty file to match the API requirement
+      const emptyBlob = new Blob([], { type: 'application/octet-stream' });
+      formData.append('image', emptyBlob, 'placeholder.png');
+    }
+
     const response = await fetch(`${BASE_URL}/campaign/create`, {
       method: 'POST',
       body: formData,
     });
-    const data = await response.json();
-    console.log("Campaign creation response:", data);
+    
+    const responseData = await response.json();
+    console.log("Campaign creation response:", responseData);
+    
+    if (responseData.status !== "success") {
+      throw new Error(responseData.message || "Failed to create campaign");
+    }
+    
     return {
-      campaign_id: formData.get('name') as string,
-      ...data
+      campaign_id: responseData.campaign_id,
+      image_url: responseData.image_url,
+      status: responseData.status
     };
+  },
+
+  addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>) => {
+    console.log("Adding numbers to campaign:", campaignId, numbers);
+    const response = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ numbers }),
+    });
+    
+    const data = await response.json();
+    console.log("Add numbers response:", data);
+    
+    if (data.status !== "success") {
+      throw new Error(data.message || "Failed to add numbers to campaign");
+    }
+    
+    return data;
   },
 
   executeCampaign: async (campaignId: string, batch_size: number, offset: number) => {
