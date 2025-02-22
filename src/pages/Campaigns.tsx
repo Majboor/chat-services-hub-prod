@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -19,6 +20,7 @@ interface CampaignNumber {
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState<CampaignDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingNumbers, setIsLoadingNumbers] = useState(false); // Added this line
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [campaignNumbers, setCampaignNumbers] = useState<CampaignNumber[]>([]);
   const [showNumbersDialog, setShowNumbersDialog] = useState(false);
