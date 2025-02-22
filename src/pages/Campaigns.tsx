@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -27,33 +26,35 @@ export default function Campaigns() {
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>("");
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const response = await apiService.listAllCampaigns(USERNAME);
-        console.log("API Response:", response);
-        if (response.status === "success" && Array.isArray(response.campaigns)) {
-          setCampaigns(response.campaigns);
-        } else {
-          console.error("Invalid response format:", response);
-          toast({
-            title: "Error",
-            description: "Invalid response format from server",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching campaigns:", error);
+  const fetchCampaigns = async () => {
+    try {
+      console.log("Fetching campaigns for:", USERNAME);
+      const response = await apiService.listAllCampaigns(USERNAME);
+      console.log("Campaigns response:", response);
+      
+      if (response.status === "success" && Array.isArray(response.campaigns)) {
+        setCampaigns(response.campaigns);
+      } else {
+        console.error("Invalid response format:", response);
         toast({
           title: "Error",
-          description: "Failed to load campaigns",
+          description: "Invalid response format from server",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load campaigns. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCampaigns();
     const interval = setInterval(fetchCampaigns, 30000);
     return () => clearInterval(interval);

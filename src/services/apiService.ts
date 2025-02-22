@@ -76,7 +76,6 @@ export interface UpdateStatusResponse {
 }
 
 export const apiService = {
-  // Campaign Creation
   createCampaign: async (data: {
     name: string;
     message: string;
@@ -116,7 +115,6 @@ export const apiService = {
     return responseData;
   },
 
-  // Add Numbers to Campaign
   addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>) => {
     const response = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignId}`, {
       method: 'POST',
@@ -135,7 +133,6 @@ export const apiService = {
     return data;
   },
 
-  // Check Campaign Status
   getCampaignStatus: async (campaignId: string): Promise<CampaignStatus> => {
     const response = await fetch(`${BASE_URL}/campaign/status/${campaignId}`);
     if (!response.ok) {
@@ -148,7 +145,6 @@ export const apiService = {
     return data;
   },
 
-  // Get Next Number from Campaign
   getNextNumber: async (campaignId: string): Promise<NextNumberResponse> => {
     const response = await fetch(`${BASE_URL}/campaign/numbers/${campaignId}`);
     if (!response.ok) {
@@ -161,7 +157,6 @@ export const apiService = {
     return data;
   },
 
-  // Update Message Status
   updateMessageStatus: async (campaignId: string, phone: string, status: 'sent' | 'failed'): Promise<UpdateStatusResponse> => {
     const response = await fetch(`${BASE_URL}/campaign/update_status/${campaignId}`, {
       method: 'POST',
@@ -183,7 +178,6 @@ export const apiService = {
     return data;
   },
 
-  // List All Campaign Numbers
   getCampaignNumbers: async (campaignId: string): Promise<CampaignNumberResponse> => {
     const response = await fetch(`${BASE_URL}/campaign/all_numbers/${campaignId}`);
     if (!response.ok) {
@@ -196,22 +190,33 @@ export const apiService = {
     return data;
   },
 
-  // List User Campaigns
   listAllCampaigns: async (username: string): Promise<{ status: string; campaigns: CampaignDetails[] }> => {
-    const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch campaigns');
+    try {
+      const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Campaigns API Response:", data);
+      
+      if (data.status !== "success") {
+        throw new Error(data.error || "Failed to list campaigns");
+      }
+      
+      if (data.campaigns) {
+        data.campaigns = data.campaigns.map(campaign => ({
+          ...campaign,
+          messages_failed: isNaN(campaign.messages_failed) ? 0 : campaign.messages_failed
+        }));
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Error in listAllCampaigns:", error);
+      throw error;
     }
-    const data = await response.json();
-    if (data.status !== "success") {
-      throw new Error(data.error || "Failed to list campaigns");
-    }
-    return data;
   },
 
-  // Add these new methods
-
-  // Get Number Lists
   getNumberLists: async (username: string): Promise<{ lists: string[] }> => {
     const response = await fetch(`${BASE_URL}/lists/${username}`);
     if (!response.ok) {
@@ -224,7 +229,6 @@ export const apiService = {
     return data;
   },
 
-  // Register User
   registerUser: async (username: string, password: string, role: string): Promise<{ message: string }> => {
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
@@ -244,7 +248,6 @@ export const apiService = {
     return data;
   },
 
-  // Create Number List
   createNumberList: async (listName: string, username: string): Promise<{ message: string }> => {
     const response = await fetch(`${BASE_URL}/lists/create`, {
       method: 'POST',
@@ -264,7 +267,6 @@ export const apiService = {
     return data;
   },
 
-  // Add Number to List
   addNumberToList: async (numberData: NumberDetails): Promise<{ message: string }> => {
     const response = await fetch(`${BASE_URL}/lists/add_number`, {
       method: 'POST',
@@ -284,7 +286,6 @@ export const apiService = {
     return data;
   },
 
-  // Get Next Number for Review
   getNextNumberForReview: async (campaignId: string) => {
     const response = await fetch(`${BASE_URL}/campaign/review/${campaignId}`);
     if (!response.ok) {
@@ -297,7 +298,6 @@ export const apiService = {
     return data;
   },
 
-  // Update Review Status
   updateReview: async (data: {
     campaign_id: string;
     number: string;
