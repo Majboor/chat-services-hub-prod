@@ -33,30 +33,23 @@ export default function ReviewNumbers() {
   const [currentNumber, setCurrentNumber] = useState<NumberDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userCredits, setUserCredits] = useState(100);
-
-  const USERNAME = "Farhana"; // This should come from your auth system
+  const [username, setUsername] = useState("Farhana");
 
   useEffect(() => {
-    loadCampaigns();
-  }, []);
-
-  const loadCampaigns = async () => {
-    try {
-      const response = await apiService.listAllCampaigns(USERNAME);
-      // Sanitize campaign names when receiving them
-      const validCampaigns = response.map((campaign: Campaign) => ({
-        ...campaign,
-        name: sanitizeCampaignName(campaign.name)
-      }));
-      setCampaigns(validCampaigns);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
+    const fetchCampaigns = async () => {
+      try {
+        const data = await apiService.listAllCampaigns(username);
+        setCampaigns(data.campaigns);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+    fetchCampaigns();
+  }, [username]);
 
   const loadNextNumber = async () => {
     if (!selectedCampaign) return;

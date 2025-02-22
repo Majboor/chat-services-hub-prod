@@ -3,7 +3,7 @@ const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 export interface NumberDetails {
   list_name: string;
   owner: string;
-  number: string; // Changed from number to string to match API
+  number: string;
   name: string;
   interests: string;
   age: string;
@@ -86,6 +86,10 @@ export const apiService = {
     created_by: string;
     image: File | null;
   }) => {
+    if (!data.image) {
+      throw new Error("Image file is required");
+    }
+
     const formData = new FormData();
     formData.append('name', data.name);
     formData.append('message', data.message);
@@ -93,10 +97,7 @@ export const apiService = {
     formData.append('end_time', data.end_time);
     formData.append('timezone', data.timezone);
     formData.append('created_by', data.created_by);
-    
-    if (data.image) {
-      formData.append('image', data.image);
-    }
+    formData.append('image', data.image);
 
     const response = await fetch(`${BASE_URL}/campaign/create`, {
       method: 'POST',
@@ -193,7 +194,7 @@ export const apiService = {
   },
 
   // List User Campaigns
-  listAllCampaigns: async (username: string): Promise<{ campaigns: CampaignDetails[] }> => {
+  listAllCampaigns: async (username: string): Promise<{ status: string; campaigns: CampaignDetails[] }> => {
     const response = await fetch(`${BASE_URL}/campaign/list/${username}`);
     if (!response.ok) {
       throw new Error('Failed to fetch campaigns');

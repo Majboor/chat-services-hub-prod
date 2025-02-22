@@ -23,6 +23,22 @@ interface CSVRow {
   [key: string]: string;
 }
 
+interface NumberDetails {
+  list_name: string;
+  owner: string;
+  number: string;
+  name: string;
+  interests: string;
+  age: string;
+  location: string;
+  gender: string;
+  language: string;
+  occupation: string;
+  preferred_contact_time: string;
+  tags: string;
+  additional_details: string;
+}
+
 export default function CreateList() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,6 +52,17 @@ export default function CreateList() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [number, setNumber] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [interests, setInterests] = useState("");
+  const [age, setAge] = useState("");
+  const [location, setLocation] = useState("");
+  const [gender, setGender] = useState("");
+  const [language, setLanguage] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
+  const [tags, setTags] = useState("");
+  const [additionalDetails, setAdditionalDetails] = useState("");
 
   const handleAuth = async () => {
     if (!username || !password) {
@@ -149,6 +176,38 @@ export default function CreateList() {
     const newFields = [...customFields];
     newFields[index] = { ...newFields[index], [field]: value };
     setCustomFields(newFields);
+  };
+
+  const handleAddNumber = async () => {
+    try {
+      const numberData: NumberDetails = {
+        list_name: listName,
+        owner: username,
+        number: number,
+        name: contactName,
+        interests,
+        age,
+        location,
+        gender,
+        language,
+        occupation,
+        preferred_contact_time: preferredTime,
+        tags,
+        additional_details: additionalDetails,
+      };
+
+      await apiService.addNumberToList(numberData);
+      toast({
+        title: "Success",
+        description: "Number added successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = async () => {

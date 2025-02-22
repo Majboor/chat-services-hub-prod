@@ -172,6 +172,15 @@ export default function V1() {
       return;
     }
 
+    if (!mediaFile) {
+      toast({
+        title: "Error",
+        description: "Image file is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const numbers = prepareNumbers();
     if (!numbers) return;
 
@@ -184,10 +193,7 @@ export default function V1() {
       formData.append('end_time', endTime);
       formData.append('timezone', timezone);
       formData.append('created_by', USERNAME);
-
-      if (mediaFile) {
-        formData.append('image', mediaFile);
-      }
+      formData.append('image', mediaFile);
 
       const campaignResponse = await fetch(`${BASE_URL}/campaign/create`, {
         method: 'POST',
