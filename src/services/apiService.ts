@@ -203,14 +203,31 @@ export const apiService = {
         throw new Error(data.error || "Failed to list campaigns");
       }
       
-      if (data.campaigns) {
-        data.campaigns = data.campaigns.map(campaign => ({
-          ...campaign,
-          messages_failed: isNaN(campaign.messages_failed) ? 0 : campaign.messages_failed
-        }));
+      if (!Array.isArray(data.campaigns)) {
+        throw new Error("Invalid campaigns data format");
       }
       
-      return data;
+      const sanitizedCampaigns = data.campaigns.map(campaign => ({
+        campaign_id: campaign.campaign_id || '',
+        created_at: campaign.created_at || '',
+        created_by: campaign.created_by || '',
+        end_time: campaign.end_time || '',
+        image_url: campaign.image_url || '',
+        message: campaign.message || '',
+        messages_pending: Number(campaign.messages_pending) || 0,
+        messages_sent: Number(campaign.messages_sent) || 0,
+        messages_failed: Number(campaign.messages_failed) || 0,
+        name: campaign.name || '',
+        start_time: campaign.start_time || '',
+        status: campaign.status || '',
+        timezone: campaign.timezone || '',
+        total_numbers: Number(campaign.total_numbers) || 0
+      }));
+      
+      return {
+        status: "success",
+        campaigns: sanitizedCampaigns
+      };
     } catch (error) {
       console.error("Error in listAllCampaigns:", error);
       throw error;

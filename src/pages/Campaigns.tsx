@@ -28,6 +28,7 @@ export default function Campaigns() {
 
   const fetchCampaigns = async () => {
     try {
+      setIsLoading(true);
       console.log("Fetching campaigns for:", USERNAME);
       const response = await apiService.listAllCampaigns(USERNAME);
       console.log("Campaigns response:", response);
@@ -49,6 +50,7 @@ export default function Campaigns() {
         description: "Failed to load campaigns. Please try again later.",
         variant: "destructive",
       });
+      setCampaigns([]); // Reset campaigns on error
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +60,7 @@ export default function Campaigns() {
     fetchCampaigns();
     const interval = setInterval(fetchCampaigns, 30000);
     return () => clearInterval(interval);
-  }, [toast]);
+  }, []);
 
   const handleCampaignClick = async (campaignId: string) => {
     try {
