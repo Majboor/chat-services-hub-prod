@@ -57,6 +57,16 @@ export default function V1() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [sampleNumber, setSampleNumber] = useState("");
 
+  const handleNumberColumnSelect = (columnName: string) => {
+    setNumberColumn(columnName);
+    if (csvData.length > 0) {
+      const firstRow = csvData[0];
+      const sampleNum = firstRow[columnName];
+      setSampleNumber(String(sampleNum || ''));
+      setShowPreviewDialog(true);
+    }
+  };
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -69,12 +79,9 @@ export default function V1() {
             setHeaders(headers);
             setCsvData(results.data as CSVRow[]);
 
-            if (headers.length > 0) {
+            if (numberColumn && headers.includes(numberColumn)) {
+              setSampleNumber(String(firstRow[numberColumn] || ''));
               setShowPreviewDialog(true);
-              if (numberColumn) {
-                const firstNumber = firstRow[numberColumn];
-                setSampleNumber(String(firstNumber || ''));
-              }
             }
           }
         },
@@ -374,7 +381,7 @@ export default function V1() {
                       id="numberColumn"
                       className="w-full p-2 border rounded"
                       value={numberColumn}
-                      onChange={(e) => setNumberColumn(e.target.value)}
+                      onChange={(e) => handleNumberColumnSelect(e.target.value)}
                     >
                       <option value="">Select column</option>
                       {headers.map((header) => (
@@ -525,9 +532,9 @@ export default function V1() {
           <div className="py-4">
             <Label>Sample Number Format</Label>
             <div className="mt-2 p-4 bg-muted rounded-lg">
-              <p className="font-mono">Original: {sampleNumber}</p>
+              <p className="font-mono">Original: {sampleNumber || 'No number selected'}</p>
               <p className="font-mono">
-                Formatted: {formatNumber(sampleNumber, numberPrefix)}
+                Formatted: {sampleNumber ? formatNumber(sampleNumber, numberPrefix) : 'No number selected'}
               </p>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
