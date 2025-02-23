@@ -150,10 +150,10 @@ export const apiService = {
     return responseData;
   },
 
-  addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>, timezone: string = 'Asia/Karachi') => {
+  addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>, prefix: string = '') => {
     const formattedNumbers = numbers.map(num => ({
       name: num.name,
-      phone: formatPhoneNumber(num.phone, timezone)
+      phone: prefix ? `${prefix}${num.phone.replace(/\D/g, '')}` : num.phone.replace(/\D/g, '')
     }));
 
     const response = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignId}`, {

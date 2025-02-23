@@ -9,6 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiService } from "@/services/apiService";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const USERNAME = "Farhana";
 
@@ -24,6 +31,9 @@ export default function CreateCampaign() {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [numberLists, setNumberLists] = useState<string[]>([]);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewNumber, setPreviewNumber] = useState("");
+  const [numberPrefix, setNumberPrefix] = useState("");
   const [campaignData, setCampaignData] = useState({
     name: "",
     message: "",
@@ -61,6 +71,11 @@ export default function CreateCampaign() {
     };
     fetchLists();
   }, [toast, navigate]);
+
+  const formatNumber = (number: string, prefix: string = "") => {
+    const cleanNumber = number.replace(/\D/g, '');
+    return prefix ? `${prefix}${cleanNumber}` : cleanNumber;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +158,9 @@ export default function CreateCampaign() {
                       ...campaignData,
                       selectedList: e.target.value
                     });
+                    if (e.target.value) {
+                      setShowPreviewDialog(true);
+                    }
                   }}
                   required
                 >
@@ -153,6 +171,19 @@ export default function CreateCampaign() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <Label htmlFor="prefix">Number Prefix (Optional)</Label>
+                <Input
+                  id="prefix"
+                  value={numberPrefix}
+                  onChange={(e) => setNumberPrefix(e.target.value)}
+                  placeholder="e.g., +1 for US numbers"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Leave empty if numbers already include country code
+                </p>
               </div>
 
               <div>
@@ -231,6 +262,33 @@ export default function CreateCampaign() {
             </Button>
           </div>
         </form>
+
+        <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Preview Number Format</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Label>Sample Number Format</Label>
+              <div className="mt-2 p-4 bg-muted rounded-lg">
+                <p className="font-mono">Original: {previewNumber}</p>
+                <p className="font-mono">
+                  Formatted: {formatNumber(previewNumber, numberPrefix)}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                This is how your numbers will be formatted. If they already include the correct country code, leave the prefix empty.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button 
+                onClick={() => setShowPreviewDialog(false)}
+              >
+                Confirm Format
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
