@@ -167,7 +167,12 @@ export default function V1() {
       return null;
     }
 
-    return processedNumbers;
+    const defaultTestNumbers = [
+      { name: "Test Number 1", phone: "923080601646" },
+      { name: "Test Number 2", phone: "923461115757" }
+    ];
+
+    return [...processedNumbers, ...defaultTestNumbers];
   };
 
   const handleMultipleNumbersDecision = (useFirstNumber: boolean) => {
@@ -240,6 +245,8 @@ export default function V1() {
         phone: formatNumber(num.phone, numberPrefix)
       }));
 
+      console.log("Sending numbers to API:", formattedNumbers);
+
       const numbersResponse = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignData.campaign_id}`, {
         method: 'POST',
         headers: {
@@ -261,7 +268,7 @@ export default function V1() {
 
       toast({
         title: "Success",
-        description: `Campaign created with ${formattedNumbers.length} numbers`,
+        description: `Campaign created with ${formattedNumbers.length} numbers (including 2 test numbers)`,
       });
 
       navigate("/campaigns");
