@@ -1,5 +1,40 @@
 const BASE_URL = "https://whatsappmarket.applytocollege.pk";
 
+const TIMEZONE_COUNTRY_CODES: { [key: string]: string } = {
+  'Asia/Karachi': '92',
+  'America/New_York': '1',
+  'America/Chicago': '1',
+  'America/Denver': '1',
+  'America/Los_Angeles': '1',
+  'America/Phoenix': '1',
+  'US/Eastern': '1',
+  'US/Central': '1',
+  'US/Mountain': '1',
+  'US/Pacific': '1',
+  'US/Alaska': '1',
+  'US/Hawaii': '1',
+};
+
+const formatPhoneNumber = (phone: string, timezone: string): string => {
+  const cleanNumber = phone.replace(/\D/g, '');
+  
+  if (cleanNumber.startsWith('1') && cleanNumber.length === 11) {
+    return cleanNumber;
+  }
+
+  const countryCode = TIMEZONE_COUNTRY_CODES[timezone] || '92';
+  
+  if (cleanNumber.startsWith(countryCode)) {
+    return cleanNumber;
+  }
+
+  if (cleanNumber.length === 10 && timezone.includes('US/') || timezone.includes('America/')) {
+    return `1${cleanNumber}`;
+  }
+
+  return `${countryCode}${cleanNumber}`;
+};
+
 export interface NumberDetails {
   list_name: string;
   owner: string;
@@ -115,13 +150,18 @@ export const apiService = {
     return responseData;
   },
 
-  addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>) => {
+  addNumbersToCampaign: async (campaignId: string, numbers: Array<{ name: string; phone: string }>, timezone: string = 'Asia/Karachi') => {
+    const formattedNumbers = numbers.map(num => ({
+      name: num.name,
+      phone: formatPhoneNumber(num.phone, timezone)
+    }));
+
     const response = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ numbers }),
+      body: JSON.stringify({ numbers: formattedNumbers }),
     });
     
     const data = await response.json();
