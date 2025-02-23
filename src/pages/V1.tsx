@@ -53,6 +53,9 @@ export default function V1() {
   const [rowSelection, setRowSelection] = useState<"top" | "skip">("top");
   const [rowCount, setRowCount] = useState<number>(0);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [numberPrefix, setNumberPrefix] = useState("");
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [sampleNumber, setSampleNumber] = useState("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -65,13 +68,21 @@ export default function V1() {
             
             setHeaders(headers);
             setCsvData(results.data as CSVRow[]);
+
+            if (headers.length > 0) {
+              setShowPreviewDialog(true);
+              if (numberColumn) {
+                const firstNumber = firstRow[numberColumn];
+                setSampleNumber(String(firstNumber || ''));
+              }
+            }
           }
         },
         header: true,
         skipEmptyLines: true,
       });
     }
-  }, []);
+  }, [numberColumn]);
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
@@ -94,7 +105,8 @@ export default function V1() {
         return matches[0]; // Return first match if using "first" option
       }
       
-      return matches[0];
+      const cleanNumber = matches[0].replace(/\D/g, '');
+      return numberPrefix ? `${numberPrefix}${cleanNumber}` : cleanNumber;
     } catch (error) {
       console.error("Regex error:", error);
       return null;
@@ -162,6 +174,11 @@ export default function V1() {
     });
   };
 
+  const formatNumber = (number: string, prefix: string = "") => {
+    const cleanNumber = number.replace(/\D/g, '');
+    return prefix ? `${prefix}${cleanNumber}` : cleanNumber;
+  };
+
   const handleCreateCampaign = async () => {
     if (!campaignName || !adPost || !nameColumn || !numberColumn) {
       toast({
@@ -176,24 +193,6 @@ export default function V1() {
       toast({
         title: "Error",
         description: "Image file is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (mediaFile.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "Image file size must be less than 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!mediaFile.type.startsWith('image/')) {
-      toast({
-        title: "Error",
-        description: "Selected file must be an image",
         variant: "destructive",
       });
       return;
@@ -231,9 +230,7 @@ export default function V1() {
 
       const formattedNumbers = numbers.map(num => ({
         name: num.name,
-        phone: num.phone.replace(/\D/g, '').startsWith('92') 
-          ? num.phone.replace(/\D/g, '')
-          : `92${num.phone.replace(/\D/g, '')}`
+        phone: formatNumber(num.phone, numberPrefix)
       }));
 
       const numbersResponse = await fetch(`${BASE_URL}/campaign/add_numbers/${campaignData.campaign_id}`, {
@@ -314,6 +311,19 @@ export default function V1() {
               />
               <p className="text-sm text-muted-foreground">
                 Use this to extract phone numbers from cells. Default pattern matches any sequence of digits.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="numberPrefix">Number Prefix (Optional)</Label>
+              <Input
+                id="numberPrefix"
+                value={numberPrefix}
+                onChange={(e) => setNumberPrefix(e.target.value)}
+                placeholder="e.g., +1 for US numbers"
+              />
+              <p className="text-sm text-muted-foreground">
+                Leave empty if numbers already include country code
               </p>
             </div>
 
@@ -502,6 +512,31 @@ export default function V1() {
               onClick={() => handleMultipleNumbersDecision(false)}
             >
               Skip Multiple Number Rows
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preview Number Format</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Sample Number Format</Label>
+            <div className="mt-2 p-4 bg-muted rounded-lg">
+              <p className="font-mono">Original: {sampleNumber}</p>
+              <p className="font-mono">
+                Formatted: {formatNumber(sampleNumber, numberPrefix)}
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              This is how your numbers will be formatted. If they already include the correct country code, leave the prefix empty.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowPreviewDialog(false)}>
+              Confirm Format
             </Button>
           </DialogFooter>
         </DialogContent>
