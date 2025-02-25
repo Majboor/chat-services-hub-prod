@@ -167,9 +167,9 @@ export default function V1() {
     // Only show error if no user numbers were processed (excluding test numbers)
     if (processedNumbers.length === 0) {
       toast({
-        title: "Warning",
+        title: "Notice",
         description: "No valid phone numbers found in CSV. Only test numbers will be included.",
-        variant: "warning",
+        variant: "default"
       });
     }
 
