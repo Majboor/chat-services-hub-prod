@@ -101,21 +101,28 @@ export default function V1() {
 
   const processPhoneNumbers = (row: CSVRow) => {
     const cellValue = row[numberColumn];
+    if (!cellValue) return null;
+
     try {
-      const regex = new RegExp(numberRegex, 'g');
-      const matches = cellValue.match(regex);
+      // First, clean the number of any formatting
+      let cleanNumber = cellValue.replace(/[\s\-\(\)\+]/g, '');
       
-      if (!matches) return null;
-      
-      if (matches.length > 1) {
-        if (multipleNumbersHandling === "skip") return null;
-        return matches[0]; // Return first match if using "first" option
-      }
-      
-      const cleanNumber = matches[0].replace(/\D/g, '');
-      return numberPrefix ? `${numberPrefix}${cleanNumber}` : cleanNumber;
+      // Log the cleaning process
+      console.log('Processing number:', {
+        original: cellValue,
+        cleaned: cleanNumber
+      });
+
+      // If the number is empty after cleaning, return null
+      if (!cleanNumber) return null;
+
+      // Return the cleaned number with optional prefix
+      const finalNumber = numberPrefix ? `${numberPrefix}${cleanNumber}` : cleanNumber;
+      console.log('Final processed number:', finalNumber);
+      return finalNumber;
+
     } catch (error) {
-      console.error("Regex error:", error);
+      console.error("Number processing error:", error);
       return null;
     }
   };
@@ -131,25 +138,12 @@ export default function V1() {
       }
     }
 
-    const hasMultipleNumbers = dataToProcess.some(row => {
-      const cellValue = row[numberColumn];
-      try {
-        const regex = new RegExp(numberRegex, 'g');
-        const matches = cellValue.match(regex);
-        return matches && matches.length > 1;
-      } catch {
-        return false;
-      }
-    });
-
-    if (hasMultipleNumbers && multipleNumbersHandling === undefined) {
-      setTempProcessedData([]);
-      setShowMultipleNumbersDialog(true);
-      return null;
-    }
+    console.log('Processing data:', dataToProcess); // Log data being processed
 
     const processedNumbers = dataToProcess.map(row => {
       const phoneNumber = processPhoneNumbers(row);
+      console.log('Processed row:', { row, resultNumber: phoneNumber }); // Log each processing result
+      
       if (!phoneNumber) return null;
 
       return {
@@ -158,21 +152,35 @@ export default function V1() {
       };
     }).filter((item): item is { name: string; phone: string } => item !== null);
 
-    if (processedNumbers.length === 0) {
-      toast({
-        title: "Error",
-        description: "No valid phone numbers found after processing",
-        variant: "destructive",
-      });
-      return null;
-    }
+    console.log('All processed numbers:', processedNumbers); // Log all processed numbers
 
+    // Add default test numbers even if no other numbers were processed
     const defaultTestNumbers = [
       { name: "Test Number 1", phone: "923080601646" },
       { name: "Test Number 2", phone: "923461115757" }
     ];
 
-    return [...processedNumbers, ...defaultTestNumbers];
+    // Always include test numbers
+    const finalNumbers = [...processedNumbers, ...defaultTestNumbers];
+    console.log('Final numbers list:', finalNumbers);
+
+    // Only show error if no user numbers were processed (excluding test numbers)
+    if (processedNumbers.length === 0) {
+      toast({
+        title: "Notice",
+        description: "No valid phone numbers found in CSV. Only test numbers will be included.",
+        variant: "default"
+      });
+    }
+
+    return finalNumbers;
+  };
+
+  const formatNumber = (number: string, prefix: string = "") => {
+    // Clean the number of any formatting characters
+    const cleanNumber = number.replace(/[\s\-\(\)\+]/g, '');
+    console.log('Format number:', { original: number, cleaned: cleanNumber, prefix });
+    return prefix ? `${prefix}${cleanNumber}` : cleanNumber;
   };
 
   const handleMultipleNumbersDecision = (useFirstNumber: boolean) => {
@@ -184,11 +192,6 @@ export default function V1() {
         ? "Will use the first number from cells with multiple numbers" 
         : "Will skip rows with multiple numbers",
     });
-  };
-
-  const formatNumber = (number: string, prefix: string = "") => {
-    const cleanNumber = number.replace(/\D/g, '');
-    return prefix ? `${prefix}${cleanNumber}` : cleanNumber;
   };
 
   const handleCreateCampaign = async () => {
