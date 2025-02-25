@@ -101,21 +101,31 @@ export default function V1() {
 
   const processPhoneNumbers = (row: CSVRow) => {
     const cellValue = row[numberColumn];
+    if (!cellValue) return null;
+
     try {
-      const regex = new RegExp(numberRegex, 'g');
-      const matches = cellValue.match(regex);
+      // First, clean the number of any formatting
+      let cleanNumber = cellValue.replace(/[\s\-\(\)\+]/g, '');
       
-      if (!matches) return null;
-      
-      if (matches.length > 1) {
-        if (multipleNumbersHandling === "skip") return null;
-        return matches[0]; // Return first match if using "first" option
+      // If the regex pattern is specified, try to match it
+      if (numberRegex !== '\\d+') {
+        const regex = new RegExp(numberRegex, 'g');
+        const matches = cellValue.match(regex);
+        
+        if (!matches) return null;
+        
+        if (matches.length > 1) {
+          if (multipleNumbersHandling === "skip") return null;
+          cleanNumber = matches[0].replace(/[\s\-\(\)\+]/g, '');
+        } else {
+          cleanNumber = matches[0].replace(/[\s\-\(\)\+]/g, '');
+        }
       }
-      
-      const cleanNumber = matches[0].replace(/\D/g, '');
+
+      // Return the cleaned number with optional prefix
       return numberPrefix ? `${numberPrefix}${cleanNumber}` : cleanNumber;
     } catch (error) {
-      console.error("Regex error:", error);
+      console.error("Number processing error:", error);
       return null;
     }
   };
@@ -187,7 +197,8 @@ export default function V1() {
   };
 
   const formatNumber = (number: string, prefix: string = "") => {
-    const cleanNumber = number.replace(/\D/g, '');
+    // Clean the number of any formatting characters
+    const cleanNumber = number.replace(/[\s\-\(\)\+]/g, '');
     return prefix ? `${prefix}${cleanNumber}` : cleanNumber;
   };
 
